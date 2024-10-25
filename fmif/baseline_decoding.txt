@@ -1,0 +1,352 @@
+Running TDS...
+Running TDS with alpha=0.1...
+Testing Model... Sampling tds
+14it [06:26, 27.63s/it]
+Sequence recovery accuracy:  0.42674418604651165
+Model log likelihood:  -69.31307
+Mean reward:  -0.33880213 Positive reward prop 0.428571
+Validation gen_foldtrue_rmsd 2.286 Validation gen_true_rmsd 0.980 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.764 Validation gen_true_success_rate 0.836 Validation foldtrue_true
+_success_rate 0.857
+Running TDS with alpha=0.3...
+Testing Model... Sampling tds
+14it [06:24, 27.43s/it]
+Sequence recovery accuracy:  0.4200258397932817
+Model log likelihood:  -68.295845
+Mean reward:  -0.42321673 Positive reward prop 0.371429
+Validation gen_foldtrue_rmsd 2.090 Validation gen_true_rmsd 0.782 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.850 Validation gen_true_success_rate 0.993 Validation foldtrue_true
+_success_rate 0.857
+Running TDS with alpha=0.5...
+Testing Model... Sampling tds
+14it [06:18, 27.03s/it]
+Sequence recovery accuracy:  0.43746770025839793
+Model log likelihood:  -68.05033
+Mean reward:  -0.49538574 Positive reward prop 0.335714
+Validation gen_foldtrue_rmsd 2.334 Validation gen_true_rmsd 1.215 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.786 Validation gen_true_success_rate 0.893 Validation foldtrue_true_success_rate 0.857
+Running TDS with alpha=0.7...
+Testing Model... Sampling tds
+14it [06:53, 29.50s/it]
+Sequence recovery accuracy:  0.4134366925064599
+Model log likelihood:  -68.10067
+Mean reward:  -0.19614226 Positive reward prop 0.457143
+Validation gen_foldtrue_rmsd 2.201 Validation gen_true_rmsd 0.999 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.786 Validation gen_true_success_rate 0.843 Validation foldtrue_true_success_rate 0.857
+Running TDS with alpha=0.9...
+Testing Model... Sampling tds
+14it [06:02, 25.92s/it]
+Sequence recovery accuracy:  0.4140826873385013
+Model log likelihood:  -67.60246
+Mean reward:  -0.59103197 Positive reward prop 0.285714
+Validation gen_foldtrue_rmsd 2.306 Validation gen_true_rmsd 1.179 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.764 Validation gen_true_success_rate 0.836 Validation foldtrue_true_success_rate 0.857
+Running TDS with alpha=1.5...
+Testing Model... Sampling tds
+14it [06:42, 28.76s/it]
+Sequence recovery accuracy:  0.40258397932816536
+Model log likelihood:  -67.5179
+Mean reward:  -0.7199676 Positive reward prop 0.242857
+Validation gen_foldtrue_rmsd 2.063 Validation gen_true_rmsd 0.842 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.786 Validation gen_true_success_rate 0.929 Validation foldtrue_true_success_rate 0.857
+Running TDS with alpha=5...
+Testing Model... Sampling tds
+14it [06:17, 26.99s/it]
+Sequence recovery accuracy:  0.40594315245478035
+Model log likelihood:  -67.73121
+Mean reward:  -0.47276378 Positive reward prop 0.307143
+Validation gen_foldtrue_rmsd 1.988 Validation gen_true_rmsd 0.790 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.836 Validation gen_true_success_rate 0.979 Validation foldtrue_true_success_rate 0.857
+
+Running DPS...
+Running DPS with scale=1...
+Testing Model... Sampling dps
+14it [06:45, 28.98s/it]
+Sequence recovery accuracy:  0.42144702842377263
+Model log likelihood:  -67.60757
+Mean reward:  -0.49728853 Positive reward prop 0.357143
+Validation gen_foldtrue_rmsd 2.336 Validation gen_true_rmsd 1.082 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.771 Validation gen_true_success_rate 0.893 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=100...
+Testing Model... Sampling dps
+14it [06:53, 29.50s/it]
+Sequence recovery accuracy:  0.42118863049095606
+Model log likelihood:  -67.99697
+Mean reward:  -0.625539 Positive reward prop 0.300000
+Validation gen_foldtrue_rmsd 2.196 Validation gen_true_rmsd 0.983 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.814 Validation gen_true_success_rate 0.921 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=1000...
+Testing Model... Sampling dps
+14it [06:54, 29.63s/it]
+Sequence recovery accuracy:  0.4156330749354005
+Model log likelihood:  -68.10364
+Mean reward:  -0.5265454 Positive reward prop 0.378571
+Validation gen_foldtrue_rmsd 2.215 Validation gen_true_rmsd 1.009 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.786 Validation gen_true_success_rate 0.886 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=10000...
+Testing Model... Sampling dps
+14it [07:10, 30.78s/it]
+Sequence recovery accuracy:  0.41808785529715764
+Model log likelihood:  -68.91888
+Mean reward:  -0.41663694 Positive reward prop 0.371429
+Validation gen_foldtrue_rmsd 2.269 Validation gen_true_rmsd 1.089 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.793 Validation gen_true_success_rate 0.879 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=100000...
+Testing Model... Sampling dps
+14it [07:04, 30.34s/it]
+Sequence recovery accuracy:  0.37196382428940566
+Model log likelihood:  -89.77674
+Mean reward:  -1.6449343 Positive reward prop 0.100000
+Validation gen_foldtrue_rmsd 2.800 Validation gen_true_rmsd 1.684 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.721 Validation gen_true_success_rate 0.800 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=1000000...
+Testing Model... Sampling dps
+14it [06:43, 28.82s/it]
+Sequence recovery accuracy:  0.08501291989664082
+Model log likelihood:  -200.60669
+Mean reward:  1.0026952 Positive reward prop 0.714286
+Validation gen_foldtrue_rmsd 12.037 Validation gen_true_rmsd 11.991 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.000 Validation gen_true_success_rate 0.000 Validation foldtrue_true_success_rate 0.857
+Running TDS...
+Running TDS with alpha=0.01...
+Testing Model... Sampling tds
+
+0it [00:00, ?it/s]
+1it [01:14, 74.78s/it]
+2it [01:37, 44.15s/it]
+3it [02:01, 35.04s/it]
+4it [02:24, 30.08s/it]
+5it [02:50, 28.80s/it]
+6it [03:17, 28.28s/it]
+7it [03:44, 27.62s/it]
+8it [04:09, 26.83s/it]
+9it [04:33, 25.91s/it]
+10it [04:57, 25.32s/it]
+11it [05:20, 24.56s/it]
+12it [05:42, 23.97s/it]
+13it [06:05, 23.61s/it]
+14it [06:30, 24.07s/it]
+14it [06:30, 27.90s/it]
+Sequence recovery accuracy:  0.4387596899224806
+Model log likelihood:  -67.91667
+Mean reward:  -0.38149717 Positive reward prop 0.428571 Mean reward (ft):  0.00017912728 Positive reward prop (ft) 0.642857
+Validation gen_foldtrue_rmsd 2.222 Validation gen_true_rmsd 1.033 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.807 Validation gen_true_success_rate 0.807 Validation foldtrue_true_success_rate 0.857
+Running TDS with alpha=0.1...
+Testing Model... Sampling tds
+
+0it [00:00, ?it/s]
+1it [01:15, 75.52s/it]
+2it [01:37, 43.84s/it]
+3it [01:53, 31.29s/it]
+4it [02:13, 26.66s/it]
+5it [02:40, 26.98s/it]
+6it [03:07, 26.96s/it]
+7it [03:34, 26.93s/it]
+8it [03:59, 26.42s/it]
+9it [04:24, 25.76s/it]
+10it [04:47, 25.13s/it]
+11it [05:11, 24.67s/it]
+12it [05:35, 24.35s/it]
+13it [05:58, 24.04s/it]
+14it [06:23, 24.47s/it]
+14it [06:23, 27.42s/it]
+Sequence recovery accuracy:  0.4046511627906977
+Model log likelihood:  -67.64143
+Mean reward:  -0.28753176 Positive reward prop 0.400000 Mean reward (ft):  -0.0027455739 Positive reward prop (ft) 0.585714
+Validation gen_foldtrue_rmsd 2.118 Validation gen_true_rmsd 0.921 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.843 Validation gen_true_success_rate 0.986 Validation foldtrue_true_success_rate 0.857
+Running TDS with alpha=0.5...
+Testing Model... Sampling tds
+
+0it [00:00, ?it/s]
+1it [01:18, 78.93s/it]
+2it [01:43, 47.00s/it]
+3it [02:07, 36.60s/it]
+4it [02:30, 31.17s/it]
+5it [02:57, 29.71s/it]
+6it [03:24, 28.82s/it]
+7it [03:51, 28.06s/it]
+8it [04:16, 27.19s/it]
+9it [04:41, 26.58s/it]
+10it [05:05, 25.69s/it]
+11it [05:29, 25.25s/it]
+12it [05:52, 24.55s/it]
+13it [06:15, 24.07s/it]
+14it [06:40, 24.37s/it]
+14it [06:40, 28.63s/it]
+Sequence recovery accuracy:  0.403359173126615
+Model log likelihood:  -68.75364
+Mean reward:  -0.70715976 Positive reward prop 0.357143 Mean reward (ft):  0.077170275 Positive reward prop (ft) 0.521429
+Validation gen_foldtrue_rmsd 2.061 Validation gen_true_rmsd 0.694 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.857 Validation gen_true_success_rate 1.000 Validation foldtrue_true_success_rate 0.857
+Running TDS with alpha=1.5...
+Testing Model... Sampling tds
+
+0it [00:00, ?it/s]
+1it [01:12, 72.72s/it]
+2it [01:35, 43.24s/it]
+3it [01:58, 34.23s/it]
+4it [02:21, 29.54s/it]
+5it [02:42, 26.45s/it]
+6it [03:06, 25.84s/it]
+7it [03:32, 25.95s/it]
+8it [03:57, 25.34s/it]
+9it [04:21, 25.03s/it]
+10it [04:45, 24.70s/it]
+11it [05:08, 24.30s/it]
+12it [05:31, 23.97s/it]
+13it [05:54, 23.39s/it]
+14it [06:18, 23.76s/it]
+14it [06:18, 27.04s/it]
+Sequence recovery accuracy:  0.40607235142118864
+Model log likelihood:  -68.637634
+Mean reward:  -0.28943613 Positive reward prop 0.621429 Mean reward (ft):  0.07603185 Positive reward prop (ft) 0.771429
+Validation gen_foldtrue_rmsd 2.063 Validation gen_true_rmsd 0.857 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.836 Validation gen_true_success_rate 0.950 Validation foldtrue_true_success_rate 0.857
+Running TDS with alpha=5...
+Testing Model... Sampling tds
+
+0it [00:00, ?it/s]
+1it [01:04, 64.50s/it]
+2it [01:27, 39.96s/it]
+3it [01:51, 32.73s/it]
+4it [02:15, 29.31s/it]
+5it [02:41, 28.28s/it]
+6it [03:08, 27.63s/it]
+7it [03:35, 27.42s/it]
+8it [04:00, 26.64s/it]
+9it [04:25, 26.07s/it]
+10it [04:48, 25.33s/it]
+11it [05:11, 24.56s/it]
+12it [05:34, 24.20s/it]
+13it [05:57, 23.68s/it]
+14it [06:22, 24.10s/it]
+14it [06:22, 27.32s/it]
+Sequence recovery accuracy:  0.42493540051679585
+Model log likelihood:  -67.27345
+Mean reward:  -0.40004766 Positive reward prop 0.357143 Mean reward (ft):  -0.11551138 Positive reward prop (ft) 0.500000
+Validation gen_foldtrue_rmsd 2.331 Validation gen_true_rmsd 1.085 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.714 Validation gen_true_success_rate 0.786 Validation foldtrue_true_success_rate 0.857
+Running TDS with alpha=15...
+Testing Model... Sampling tds
+
+0it [00:00, ?it/s]
+1it [01:06, 66.80s/it]
+2it [01:29, 40.96s/it]
+3it [01:54, 33.37s/it]
+4it [02:16, 29.10s/it]
+5it [02:43, 28.44s/it]
+6it [03:10, 27.86s/it]
+7it [03:37, 27.63s/it]
+8it [04:01, 26.39s/it]
+9it [04:25, 25.67s/it]
+10it [04:49, 24.99s/it]
+11it [05:11, 24.24s/it]
+12it [05:34, 23.84s/it]
+13it [05:57, 23.58s/it]
+14it [06:22, 23.89s/it]
+14it [06:22, 27.29s/it]
+Sequence recovery accuracy:  0.42209302325581394
+Model log likelihood:  -67.75985
+Mean reward:  -0.5393646 Positive reward prop 0.314286 Mean reward (ft):  -0.026458591 Positive reward prop (ft) 0.414286
+Validation gen_foldtrue_rmsd 2.155 Validation gen_true_rmsd 0.888 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.771 Validation gen_true_success_rate 0.907 Validation foldtrue_true_success_rate 0.857
+Running DPS...
+Running DPS with scale=100000...
+Testing Model... Sampling dps
+
+0it [00:00, ?it/s]
+1it [01:15, 75.14s/it]
+2it [01:40, 45.80s/it]
+3it [02:06, 36.59s/it]
+4it [02:29, 31.39s/it]
+5it [02:57, 30.34s/it]
+6it [03:26, 29.64s/it]
+7it [03:53, 28.87s/it]
+8it [04:19, 27.90s/it]
+9it [04:45, 27.39s/it]
+10it [05:10, 26.64s/it]
+11it [05:34, 25.84s/it]
+12it [05:59, 25.64s/it]
+13it [06:23, 25.20s/it]
+14it [06:51, 25.87s/it]
+14it [06:51, 29.38s/it]
+Sequence recovery accuracy:  0.37622739018087853
+Model log likelihood:  -90.535866
+Mean reward:  -1.6765001 Positive reward prop 0.114286 Mean reward (ft):  -1.214351 Positive reward prop (ft) 0.278571
+Validation gen_foldtrue_rmsd 2.975 Validation gen_true_rmsd 1.878 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.693 Validation gen_true_success_rate 0.750 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=300000...
+Testing Model... Sampling dps
+
+0it [00:00, ?it/s]
+1it [01:19, 79.05s/it]
+2it [01:43, 47.07s/it]
+3it [02:08, 37.09s/it]
+4it [02:33, 32.30s/it]
+5it [03:03, 31.15s/it]
+6it [03:30, 29.95s/it]
+7it [03:58, 29.16s/it]
+8it [04:24, 28.13s/it]
+9it [04:49, 27.14s/it]
+10it [05:13, 26.34s/it]
+11it [05:38, 25.86s/it]
+12it [06:03, 25.51s/it]
+13it [06:27, 25.15s/it]
+14it [06:53, 25.51s/it]
+14it [06:53, 29.55s/it]
+Sequence recovery accuracy:  0.20762273901808787
+Model log likelihood:  -152.30368
+Mean reward:  -1.9862806 Positive reward prop 0.221429 Mean reward (ft):  -2.0143077 Positive reward prop (ft) 0.064286
+Validation gen_foldtrue_rmsd 11.473 Validation gen_true_rmsd 10.875 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.129 Validation gen_true_success_rate 0.143 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=500000...
+Testing Model... Sampling dps
+
+0it [00:00, ?it/s]
+1it [01:19, 79.76s/it]
+2it [01:45, 47.89s/it]
+3it [02:11, 38.19s/it]
+4it [02:38, 33.41s/it]
+5it [03:08, 32.20s/it]
+6it [03:37, 31.29s/it]
+7it [04:05, 30.26s/it]
+8it [04:32, 29.17s/it]
+9it [04:59, 28.33s/it]
+10it [05:25, 27.63s/it]
+11it [05:50, 27.05s/it]
+12it [06:16, 26.55s/it]
+13it [06:42, 26.36s/it]
+14it [07:10, 26.90s/it]
+14it [07:10, 30.74s/it]
+Sequence recovery accuracy:  0.14328165374677002
+Model log likelihood:  -178.28474
+Mean reward:  -0.7025949 Positive reward prop 0.328571 Mean reward (ft):  -1.2512399 Positive reward prop (ft) 0.071429
+Validation gen_foldtrue_rmsd 11.391 Validation gen_true_rmsd 10.736 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.000 Validation gen_true_success_rate 0.000 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=1000000...
+Testing Model... Sampling dps
+
+0it [00:00, ?it/s]
+1it [01:20, 80.60s/it]
+2it [01:45, 47.97s/it]
+3it [02:12, 38.21s/it]
+4it [02:35, 32.46s/it]
+5it [03:05, 31.41s/it]
+6it [03:34, 30.51s/it]
+7it [04:02, 29.61s/it]
+8it [04:28, 28.57s/it]
+9it [04:54, 27.73s/it]
+10it [05:18, 26.53s/it]
+11it [05:42, 25.99s/it]
+12it [06:07, 25.51s/it]
+13it [06:31, 25.19s/it]
+14it [06:59, 25.90s/it]
+14it [06:59, 29.95s/it]
+Sequence recovery accuracy:  0.08759689922480621
+Model log likelihood:  -201.32397
+Mean reward:  0.98798305 Positive reward prop 0.714286 Mean reward (ft):  -0.14153709 Positive reward prop (ft) 0.714286
+Validation gen_foldtrue_rmsd 12.027 Validation gen_true_rmsd 11.976 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.000 Validation gen_true_success_rate 0.000 Validation foldtrue_true_success_rate 0.857
+
+Running DPS...
+Running DPS with scale=10...
+Testing Model... Sampling dps
+0it [00:00, ?it/s]1it [01:28, 88.92s/it]2it [01:52, 50.49s/it]3it [02:19, 39.57s/it]4it [02:42, 33.07s/it]5it [03:11, 31.75s/it]6it [03:40, 30.75s/it]7it [04:08, 29.95s/it]8it [04:35, 29.05s/it]9it [05:02, 28.15s/it]10it [05:27, 27.24s/it]11it [05:53, 26.85s/it]12it [06:17, 26.21s/it]13it [06:41, 25.38s/it]14it [07:08, 25.94s/it]14it [07:08, 30.62s/it]
+Sequence recovery accuracy:  0.41834625322997415
+Model log likelihood:  -68.0636
+Mean reward:  -0.5681364 Positive reward prop 0.300000 Mean reward (ft):  -0.07423781 Positive reward prop (ft) 0.571429
+Validation gen_foldtrue_rmsd 2.255 Validation gen_true_rmsd 1.035 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.750 Validation gen_true_success_rate 0.871 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=100...
+Testing Model... Sampling dps
+0it [00:00, ?it/s]1it [01:07, 67.15s/it]2it [01:31, 41.87s/it]3it [01:57, 34.66s/it]4it [02:21, 30.46s/it]5it [02:49, 29.75s/it]6it [03:18, 29.36s/it]7it [03:46, 28.85s/it]8it [04:10, 27.33s/it]9it [04:35, 26.69s/it]10it [05:01, 26.31s/it]11it [05:26, 25.97s/it]12it [05:50, 25.32s/it]13it [06:14, 25.16s/it]14it [06:41, 25.44s/it]14it [06:41, 28.65s/it]
+Sequence recovery accuracy:  0.420671834625323
+Model log likelihood:  -67.33722
+Mean reward:  -0.5598147 Positive reward prop 0.350000 Mean reward (ft):  -0.04220162 Positive reward prop (ft) 0.578571
+Validation gen_foldtrue_rmsd 2.218 Validation gen_true_rmsd 0.983 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.807 Validation gen_true_success_rate 0.907 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=1000...
+Testing Model... Sampling dps
+0it [00:00, ?it/s]1it [01:20, 80.59s/it]2it [01:44, 46.98s/it]3it [02:10, 37.43s/it]4it [02:34, 32.40s/it]5it [03:03, 31.17s/it]6it [03:32, 30.28s/it]7it [03:59, 29.31s/it]8it [04:25, 28.36s/it]9it [04:52, 27.69s/it]10it [05:16, 26.63s/it]11it [05:41, 26.01s/it]12it [06:06, 25.78s/it]13it [06:30, 25.31s/it]14it [06:57, 25.80s/it]14it [06:57, 29.82s/it]
+Sequence recovery accuracy:  0.41511627906976745
+Model log likelihood:  -67.63733
+Mean reward:  -0.57552946 Positive reward prop 0.335714 Mean reward (ft):  0.0068577495 Positive reward prop (ft) 0.642857
+Validation gen_foldtrue_rmsd 2.188 Validation gen_true_rmsd 0.952 Validation foldtrue_true_rmsd 2.039 Validation gen_foldtrue_success_rate 0.800 Validation gen_true_success_rate 0.893 Validation foldtrue_true_success_rate 0.857
+Running DPS with scale=3000...
