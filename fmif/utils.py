@@ -7,6 +7,8 @@ import time
 import random
 import os
 
+
+
 class StructureDataset():
     def __init__(self, pdb_dict_list, verbose=True, truncate=None, max_length=100,
         alphabet='ACDEFGHIKLMNPQRSTVWYX'):

@@ -14,3 +14,11 @@ inference_outputs/
 *.json
 .vscode/
 *.npz
+datasets/artifacts/
+datasets/AlphaFold_model_PDBs/
+datasets/processed_data/
+datasets/wandb/
+*.pt
+.cache/
+fmif/sc_tmp/
+log2/

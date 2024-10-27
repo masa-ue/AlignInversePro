@@ -1,16 +1,41 @@
-### Gudaince 
+# Tutorial: Inference-Time Alignment in Discrete Diffusion Models for Protein Design 
+
+This code accompanies the tutorial paper on inference-time alignment in diffusion models. Here, the goal is to optimize several reward functions in a protein inverse folding model ($p(x|c)$) where $x$ is a sequence, and $c$ is a backbone structure and a protein-inverse folding model. 
+
+
+## Primary Code
+Go to **fmif** folder. Then, the inference-time technique can be run as follows.  
 
 ```
-CUDA_VISIBLE_DEVICES=6 python eval_finetune.py --decoding 'dps' --dps_scale 10
+CUDA_VISIBLE_DEVICES=5 python eval_finetune.py --decoding 'SVDD' --reward_name 'stability'  
 ```
 
-```
-CUDA_VISIBLE_DEVICES=6 python eval_finetune.py --decoding 'tds' --alpha 0.2
-```
+* **--decoding**: 
+  * **SMC**: Refer to Sec. XXX. 
+  * **SVDD** (value-based sampling): Refer to Sec. XXX.
+  * **NestedIS**: Refer to Sec. XXX. 
+  * **classifier guidance**: Refer to Sec. XXX   
+* **--rewards**:  
+  * **stability** (differentiable): This is a reward trained in XXX, which predicts Gibbs’s free energy from a sequence and a structure on the Megalscale dataset. For details, refer to XXX.  
+  * **scRMSD**(non-differentiable): $\|c- f(\hat x) \|$ where $f$ is a forward folding model (ESMfold). 
+  * **stability_rosetta** (non-differentiable): $g(f(\hat x))$ where $f$ is a forward folding model (ESMfold) and $g$ is physics-based reward feedback to calcuate energy.
 
+
+## Results 
+
+
+## Installation 
+
+* The pre-trained model is based on the code in multiflow code (XXX). Hence, we refer the installation procedure in XXX. 
+* Then, to introduce pre-trained models/datasets, run 
 ```
-CUDA_VISIBLE_DEVICES=5 python eval_finetune.py --decoding 'tds2'  --tds_alpha 0.2
+python download_model_data.py
 ```
+* To calculate the energy, we need Pyrosseta. 
+
+
+
+-----------------(Original code)------------------------
 
 # Multiflow: protein co-design with discrete and continuous flows
 

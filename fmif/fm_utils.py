@@ -694,11 +694,11 @@ class Interpolant:
         x_grad = x_onehot.grad.clone()
         return x_grad
 
-    def sample_controlled_TDS3(
+    def sample_controlled_SVDD(
             self,
             model,
             X, mask, chain_M, residue_idx, chain_encoding_all,
-            reward_model, alpha, repeats = 15
+            reward_model, reward_name, repeats = 20 
         ):
 
         num_batch, num_res = mask.shape
@@ -715,182 +715,6 @@ class Interpolant:
         prot_traj = [aatypes_0.detach().cpu()] 
         clean_traj = []
         for t_2 in tqdm(ts[1:]):
-            d_t = t_2 - t_1
-            with torch.no_grad():
-                # model_out = model(batch)
-               model_out = model(X, aatypes_t_1, mask, chain_M, residue_idx, chain_encoding_all)
-
-            pred_logits_1 = model_out # [bsz, seqlen, 22]
-            pred_logits_wo_mask = pred_logits_1.clone()
-            pred_logits_wo_mask[:, :, mu.MASK_TOKEN_INDEX] = -1e9
-            pred_aatypes_1 = torch.argmax(pred_logits_wo_mask, dim=-1)
-            # pred_aatypes_1 = torch.argmax(pred_logits_1, dim=-1)
-            clean_traj.append(pred_aatypes_1.detach().cpu())
-
-            if self._cfg.do_purity:
-                aatypes_t_2 = self._aatypes_euler_step_purity(d_t, t_1, pred_logits_1, aatypes_t_1)
-            else:
-                # aatypes_t_2 = self._aatypes_euler_step(d_t, t_1, pred_logits_1, aatypes_t_1)
-                
-                # change it to the sampling as in the gosai dataset
-                pred_logits_1[:, :, mu.MASK_TOKEN_INDEX] = self.neg_infinity
-                pred_logits_1 = pred_logits_1 / self._cfg.temp - torch.logsumexp(pred_logits_1 / self._cfg.temp, 
-                                                                             dim=-1, keepdim=True)
-
-                # For the logits of the unmasked tokens, set all values
-                # to -infinity except for the indices corresponding to
-                # the unmasked tokens.
-                unmasked_indices = (aatypes_t_1 != mu.MASK_TOKEN_INDEX)
-                pred_logits_1[unmasked_indices] = self.neg_infinity
-                pred_logits_1[unmasked_indices, aatypes_t_1[unmasked_indices]] = 0
-                
-                move_chance_t = 1.0 - t_1
-                move_chance_s = 1.0 - t_2
-                q_xs = pred_logits_1.exp() * d_t
-
-                
-                q_xs[:, :, mu.MASK_TOKEN_INDEX] = move_chance_s #[:, :, 0]
-                # _x = torch.multinomial(q_xs.view(-1, q_xs.shape[-1]), num_samples=1).view(num_batch, num_res)
-          
-                copy_flag = (aatypes_t_1 != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
-                aatypes_t_2_list = [ aatypes_t_1 * copy_flag + _sample_categorical(q_xs) * (1 - copy_flag) for iii in range(repeats) ] 
-
-                scores = []
-                for i in range(repeats):
-                    copy_flag_pes = (aatypes_t_2_list[i] != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
-                    expected_x0_pes = model(X, aatypes_t_2_list[i], mask, chain_M, residue_idx, chain_encoding_all) # Calcualte E[x_0|x_{t-1}]
-                    one_hot_x0 = torch.argmax(expected_x0_pes, dim = 2)
-                    improve_hot_x0 = copy_flag_pes * aatypes_t_2_list[i] + (1 - copy_flag_pes) *  one_hot_x0
-                    #reward = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
-                    reward = reward_model.cal_rmsd_reward(improve_hot_x0)
-                    reward  = np.array(reward)
-                    reward = torch.from_numpy(reward).to(self._device)
-                    scores.append(reward.squeeze())
-
-                scores = torch.stack(scores, dim=1)
-                final_sample_indices = torch.argmin(scores, dim=1).squeeze()  # Shape [batch_size]
-                final_samples = [aatypes_t_2_list[final_sample_indices[j]][j,:] for j in range(aatypes_t_1.size(0))]  # Select the chosen samples using gathered indices
-                aatypes_t_2 = torch.stack(final_samples, dim=0)                            
-
-            aatypes_t_1 = aatypes_t_2.long()
-            prot_traj.append(aatypes_t_2.cpu().detach())
-
-            t_1 = t_2
-
-        # We only integrated to min_t, so need to make a final step
-        t_1 = ts[-1]
-        print(torch.mean(scores))
-        return pred_aatypes_1, prot_traj, clean_traj
-
-    def sample_controlled_TDS4(
-            self,
-            model,
-            X, mask, chain_M, residue_idx, chain_encoding_all,
-            reward_model, alpha, repeats = 15
-        ):
-
-        num_batch, num_res = mask.shape
-        aatypes_0 = _masked_categorical(num_batch, num_res, self._device).long()
-
-        logs_traj = defaultdict(list)
-
-        # Set-up time
-        # if num_timesteps is None:
-        num_timesteps = self._cfg.num_timesteps
-        ts = torch.linspace(self._cfg.min_t, 1.0, num_timesteps)
-        t_1 = ts[0]
-        aatypes_t_1 = aatypes_0 # [bsz, seqlen]
-        prot_traj = [aatypes_0.detach().cpu()] 
-        clean_traj = []
-        for t_2 in tqdm(ts[1:]):
-            d_t = t_2 - t_1
-            with torch.no_grad():
-                # model_out = model(batch)
-               model_out = model(X, aatypes_t_1, mask, chain_M, residue_idx, chain_encoding_all)
-
-            pred_logits_1 = model_out # [bsz, seqlen, 22]
-            pred_logits_wo_mask = pred_logits_1.clone()
-            pred_logits_wo_mask[:, :, mu.MASK_TOKEN_INDEX] = -1e9
-            pred_aatypes_1 = torch.argmax(pred_logits_wo_mask, dim=-1)
-            # pred_aatypes_1 = torch.argmax(pred_logits_1, dim=-1)
-            clean_traj.append(pred_aatypes_1.detach().cpu())
-
-            if self._cfg.do_purity:
-                aatypes_t_2 = self._aatypes_euler_step_purity(d_t, t_1, pred_logits_1, aatypes_t_1)
-            else:
-                # aatypes_t_2 = self._aatypes_euler_step(d_t, t_1, pred_logits_1, aatypes_t_1)
-                
-                # change it to the sampling as in the gosai dataset
-                pred_logits_1[:, :, mu.MASK_TOKEN_INDEX] = self.neg_infinity
-                pred_logits_1 = pred_logits_1 / self._cfg.temp - torch.logsumexp(pred_logits_1 / self._cfg.temp, 
-                                                                             dim=-1, keepdim=True)
-
-                # For the logits of the unmasked tokens, set all values
-                # to -infinity except for the indices corresponding to
-                # the unmasked tokens.
-                unmasked_indices = (aatypes_t_1 != mu.MASK_TOKEN_INDEX)
-                pred_logits_1[unmasked_indices] = self.neg_infinity
-                pred_logits_1[unmasked_indices, aatypes_t_1[unmasked_indices]] = 0
-                
-                move_chance_t = 1.0 - t_1
-                move_chance_s = 1.0 - t_2
-                q_xs = pred_logits_1.exp() * d_t
-
-                
-                q_xs[:, :, mu.MASK_TOKEN_INDEX] = move_chance_s #[:, :, 0]
-                # _x = torch.multinomial(q_xs.view(-1, q_xs.shape[-1]), num_samples=1).view(num_batch, num_res)
-          
-                copy_flag = (aatypes_t_1 != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
-                aatypes_t_2_list = [ aatypes_t_1 * copy_flag + _sample_categorical(q_xs) * (1 - copy_flag) for iii in range(repeats) ] 
-
-                scores = []
-                for i in range(repeats):
-                    copy_flag_pes = (aatypes_t_2_list[i] != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
-                    expected_x0_pes = model(X, aatypes_t_2_list[i], mask, chain_M, residue_idx, chain_encoding_all) # Calcualte E[x_0|x_{t-1}]
-                    one_hot_x0 = torch.argmax(expected_x0_pes, dim = 2)
-                    improve_hot_x0 = copy_flag_pes * aatypes_t_2_list[i] + (1 - copy_flag_pes) *  one_hot_x0
-                    #reward = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
-                    reward = reward_model.calculate_energy(improve_hot_x0)
-                    reward  = np.array(reward)
-                    reward = torch.from_numpy(reward).to(self._device)
-                    scores.append(reward.squeeze())
-
-                scores = torch.stack(scores, dim=1)
-                final_sample_indices = torch.argmin(scores, dim=1).squeeze()  # Shape [batch_size]
-                final_samples = [aatypes_t_2_list[final_sample_indices[j]][j,:] for j in range(aatypes_t_1.size(0))]  # Select the chosen samples using gathered indices
-                aatypes_t_2 = torch.stack(final_samples, dim=0)                            
-
-            aatypes_t_1 = aatypes_t_2.long()
-            prot_traj.append(aatypes_t_2.cpu().detach())
-
-            t_1 = t_2
-
-        # We only integrated to min_t, so need to make a final step
-        t_1 = ts[-1]
-        print(torch.mean(scores))
-        return pred_aatypes_1, prot_traj, clean_traj
-    
-    def sample_controlled_TDS2(
-            self,
-            model,
-            X, mask, chain_M, residue_idx, chain_encoding_all,
-            reward_model, alpha, repeats = 20
-        ):
-
-        num_batch, num_res = mask.shape
-        aatypes_0 = _masked_categorical(num_batch, num_res, self._device).long()
-
-        logs_traj = defaultdict(list)
-
-        # Set-up time
-        # if num_timesteps is None:
-        num_timesteps = self._cfg.num_timesteps
-        ts = torch.linspace(self._cfg.min_t, 1.0, num_timesteps)
-        t_1 = ts[0]
-        aatypes_t_1 = aatypes_0 # [bsz, seqlen]
-        prot_traj = [aatypes_0.detach().cpu()] 
-        clean_traj = []
-        for t_2 in ts[1:]:
             d_t = t_2 - t_1
             with torch.no_grad():
                 # model_out = model(batch)
@@ -933,16 +757,25 @@ class Interpolant:
                 aatypes_t_2_list = [ aatypes_t_1 * copy_flag + categorical_list[iii] * (1 - copy_flag) for iii in range(repeats) ] 
 
                 scores = []
-                for i in range(repeats):
+                for i in range(repeats): 
                     copy_flag_pes = (aatypes_t_2_list[i] != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
                     expected_x0_pes = model(X, aatypes_t_2_list[i], mask, chain_M, residue_idx, chain_encoding_all) # Calcualte E[x_0|x_{t-1}]
                     one_hot_x0 = torch.argmax(expected_x0_pes, dim = 2)
                     improve_hot_x0 = copy_flag_pes * aatypes_t_2_list[i] + (1 - copy_flag_pes) *  one_hot_x0
-                    reward = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
+                    if reward_name == 'stability':
+                        reward = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
+                    elif reward_name == 'scRMSD':
+                        reward = reward_model.cal_rmsd_reward(improve_hot_x0)
+                        reward  = np.array(reward)
+                        reward = -torch.from_numpy(reward).to(self._device)
+                    elif reward_name == 'stability_rosetta':
+                        reward = reward_model.calculate_energy(improve_hot_x0)
+                        reward  = np.array(reward)
+                        reward = -torch.from_numpy(reward).to(self._device)
                     scores.append(reward.squeeze())
 
                 scores = torch.stack(scores, dim=1)
-                final_sample_indices = torch.argmax(scores, dim=1).squeeze()  # Shape [batch_size]
+                final_sample_indices = torch.argmax(scores, dim=1).squeeze()  # Indices, Shape [batch_size]
                 final_samples = [aatypes_t_2_list[final_sample_indices[j]][j,:] for j in range(aatypes_t_1.size(0))]  # Select the chosen samples using gathered indices
                 aatypes_t_2 = torch.stack(final_samples, dim=0)                            
 
@@ -955,7 +788,111 @@ class Interpolant:
         t_1 = ts[-1]
         print(torch.mean(scores))
         return pred_aatypes_1, prot_traj, clean_traj
+    
+    def sample_controlled_NestedIS(
+            self,
+            model,
+            X, mask, chain_M, residue_idx, chain_encoding_all,
+            reward_model, reward_name, repeats = 20 
+        ):
 
+        num_batch, num_res = mask.shape
+        aatypes_0 = _masked_categorical(num_batch, num_res, self._device).long()
+
+        logs_traj = defaultdict(list)
+
+        # Set-up time
+        # if num_timesteps is None:
+        num_timesteps = self._cfg.num_timesteps
+        ts = torch.linspace(self._cfg.min_t, 1.0, num_timesteps)
+        t_1 = ts[0]
+        aatypes_t_1 = aatypes_0 # [bsz, seqlen]
+        prot_traj = [aatypes_0.detach().cpu()] 
+        clean_traj = []
+        for t_2 in tqdm(ts[1:]):
+            d_t = t_2 - t_1
+            with torch.no_grad():
+                # model_out = model(batch)
+               model_out = model(X, aatypes_t_1, mask, chain_M, residue_idx, chain_encoding_all)
+
+            pred_logits_1 = model_out # [bsz, seqlen, 22]
+            pred_logits_wo_mask = pred_logits_1.clone()
+            pred_logits_wo_mask[:, :, mu.MASK_TOKEN_INDEX] = -1e9
+            pred_aatypes_1 = torch.argmax(pred_logits_wo_mask, dim=-1)
+            # pred_aatypes_1 = torch.argmax(pred_logits_1, dim=-1)
+            clean_traj.append(pred_aatypes_1.detach().cpu())
+
+            if self._cfg.do_purity:
+                aatypes_t_2 = self._aatypes_euler_step_purity(d_t, t_1, pred_logits_1, aatypes_t_1)
+            else:
+                # aatypes_t_2 = self._aatypes_euler_step(d_t, t_1, pred_logits_1, aatypes_t_1)
+                
+                # change it to the sampling as in the gosai dataset
+                pred_logits_1[:, :, mu.MASK_TOKEN_INDEX] = self.neg_infinity
+                pred_logits_1 = pred_logits_1 / self._cfg.temp - torch.logsumexp(pred_logits_1 / self._cfg.temp, 
+                                                                             dim=-1, keepdim=True)
+
+                # For the logits of the unmasked tokens, set all values
+                # to -infinity except for the indices corresponding to
+                # the unmasked tokens.
+                unmasked_indices = (aatypes_t_1 != mu.MASK_TOKEN_INDEX)
+                pred_logits_1[unmasked_indices] = self.neg_infinity
+                pred_logits_1[unmasked_indices, aatypes_t_1[unmasked_indices]] = 0
+                
+                move_chance_t = 1.0 - t_1
+                move_chance_s = 1.0 - t_2
+                q_xs = pred_logits_1.exp() * d_t
+
+                
+                q_xs[:, :, mu.MASK_TOKEN_INDEX] = move_chance_s #[:, :, 0]
+                # _x = torch.multinomial(q_xs.view(-1, q_xs.shape[-1]), num_samples=1).view(num_batch, num_res)
+          
+                copy_flag = (aatypes_t_1 != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
+                categorical_list = [ _sample_categorical(q_xs) for iii in range(repeats) ]
+                aatypes_t_2_list = [ aatypes_t_1 * copy_flag + categorical_list[iii] * (1 - copy_flag) for iii in range(repeats) ] 
+
+                scores = []
+                for i in range(repeats): 
+                    copy_flag_pes = (aatypes_t_2_list[i] != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
+                    expected_x0_pes = model(X, aatypes_t_2_list[i], mask, chain_M, residue_idx, chain_encoding_all) # Calcualte E[x_0|x_{t-1}]
+                    one_hot_x0 = torch.argmax(expected_x0_pes, dim = 2)
+                    improve_hot_x0 = copy_flag_pes * aatypes_t_2_list[i] + (1 - copy_flag_pes) *  one_hot_x0
+                    if reward_name == 'stability':
+                        reward = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
+                    elif reward_name == 'scRMSD':
+                        reward = reward_model.cal_rmsd_reward(improve_hot_x0)
+                        reward  = np.array(reward)
+                        reward = -torch.from_numpy(reward).to(self._device)
+                    elif reward_name == 'stability_rosetta':
+                        reward = reward_model.calculate_energy(improve_hot_x0)
+                        reward  = np.array(reward)
+                        reward = -torch.from_numpy(reward).to(self._device)
+                    scores.append(reward.squeeze())
+
+                scores = torch.stack(scores, dim=1)
+                final_sample_indices = torch.argmax(scores, dim=1).squeeze()  # Indices, Shape [batch_size]
+              
+                final_samples = [aatypes_t_2_list[final_sample_indices[j]][j,:] for j in range(aatypes_t_1.size(0))]  # Select the chosen samples using gathered indices
+                aatypes_t_2 = torch.stack(final_samples, dim=0)  
+                
+                ### Global resampling
+                global_weight = torch.max(scores, dim=1).values  # Indices, Shape [batch_size]
+                global_weighthoge = torch.exp(global_weight/torch.max( torch.abs(global_weight )))
+                global_weighthoge = global_weighthoge.cpu().detach().numpy()
+                final_sample_indices = np.random.choice(aatypes_t_1.shape[0], aatypes_t_1.shape[0], p =  global_weighthoge/global_weighthoge.sum() )                  
+                aatypes_t_2 = aatypes_t_2[final_sample_indices]
+
+               
+            aatypes_t_1 = aatypes_t_2.long()
+            prot_traj.append(aatypes_t_2.cpu().detach())
+
+            t_1 = t_2
+
+        # We only integrated to min_t, so need to make a final step
+        t_1 = ts[-1]
+        print(torch.mean(scores))
+        return pred_aatypes_1, prot_traj, clean_traj
+    '''
     def sample_controlled_TDS5(
             self,
             model,
@@ -1044,13 +981,14 @@ class Interpolant:
         t_1 = ts[-1]
         print(torch.mean(scores))
         return pred_aatypes_1, prot_traj, clean_traj
+    '''
     
 
-    def sample_controlled_TDS(
+    def sample_controlled_SMC(
             self,
             model,
             X, mask, chain_M, residue_idx, chain_encoding_all,
-            reward_model, alpha
+            reward_model, reward_name, alpha = 0.5
         ):
 
         num_batch, num_res = mask.shape
@@ -1117,8 +1055,18 @@ class Interpolant:
                 improve_hot_x0 = copy_flag * aatypes_t_2 + (1 - copy_flag) *  one_hot_x0
                 reward_num = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
 
-                # expected_x0_arg = torch.argmax(expected_x0,dim=2)
-                # expected_x0_onehot = torch.nn.functional.one_hot(expected_x0_arg)
+                if reward_name == 'stability':
+                        reward_num = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
+                elif reward_name == 'scRMSD':
+                    reward_num = reward_model.cal_rmsd_reward(improve_hot_x0)
+                    reward_num  = np.array(reward_num)
+                    reward_num = -torch.from_numpy(reward_num).to(self._device)
+                elif reward_name == 'stability_rosetta':
+                    reward_num = reward_model.calculate_energy(improve_hot_x0)
+                    reward_num  = np.array(reward_num)
+                    reward_num = -torch.from_numpy(reward_num).to(self._device)
+
+          
                 '''
                 Calcualte exp(v_{t}(x_{t})/alpha)
                 '''
@@ -1128,13 +1076,24 @@ class Interpolant:
                 improve_hot_x0 = copy_flag * aatypes_t_1 + (1 - copy_flag) *  one_hot_x0
                 reward_den = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
 
+                if reward_name == 'stability':
+                        reward_den = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
+                elif reward_name == 'scRMSD':
+                    reward_den = reward_model.cal_rmsd_reward(improve_hot_x0)
+                    reward_den  = np.array(reward_den)
+                    reward_den = -torch.from_numpy(reward_den).to(self._device)
+                elif reward_name == 'stability_rosetta':
+                    reward_den = reward_model.calculate_energy(improve_hot_x0)
+                    reward_den  = np.array(reward_den)
+                    reward_den = -torch.from_numpy(reward_den).to(self._device)
+
+
+                '''
+                Calculate ratio and do sampling
+                '''
                 ratio = torch.exp(1.0/alpha * (reward_num - reward_den)) # Now calculate exp( (v_{t-1}(x_{t-1) -v_{t}(x_{t}) /alpha) 
                 ratio = ratio.detach().cpu().numpy()
-                #print(ratio.shape)
-                final_sample_indices = np.random.choice(reward_num.shape[0], reward_num.shape[0], p =  ratio/ratio.sum() ) 
-                #print(final_sample_indices.shape)
-
-                #print(aatypes_t_2.shape)                
+                final_sample_indices = np.random.choice(reward_num.shape[0], reward_num.shape[0], p =  ratio/ratio.sum() )                  
                 aatypes_t_2 = aatypes_t_2[final_sample_indices]
 
             aatypes_t_1 = aatypes_t_2.long()

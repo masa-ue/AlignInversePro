@@ -50,7 +50,7 @@ from tqdm import tqdm
 from multiflow.models import folding_model
 from types import SimpleNamespace
 
-from reward import newreward_model
+
 
 def cal_rmsd(S_sp, S, batch, the_folding_model, pdb_path, mask_for_loss, save_path, namename, eval=False):
     with torch.no_grad():
@@ -64,7 +64,7 @@ def cal_rmsd(S_sp, S, batch, the_folding_model, pdb_path, mask_for_loss, save_pa
             run_name = run_name[-1]
         
         if eval:
-            sc_output_dir = os.path.join('/data/ueharam/sc_tmp', run_name, namename, 'sc_output', batch["protein_name"][0][:-4])
+            sc_output_dir = os.path.join('sc_tmp', run_name, namename, 'sc_output', batch["protein_name"][0][:-4])
             the_pdb_path = os.path.join(pdb_path, batch['WT_name'][0])
             # fold the ground truth sequence
             os.makedirs(os.path.join(sc_output_dir, 'true_seqs'), exist_ok=True)
@@ -80,8 +80,8 @@ def cal_rmsd(S_sp, S, batch, the_folding_model, pdb_path, mask_for_loss, save_pa
         
         for _it, ssp in enumerate(S_sp):
             if not eval:
-                sc_output_dir = os.path.join('/data/ueharam/sc_tmp', run_name, 'sc_output', batch["protein_name"][_it][:-4])
-            sc_output_dir = os.path.join('/data/ueharam/sc_tmp', run_name, namename, 'sc_output', batch["protein_name"][0][:-4],  str(_it)) 
+                sc_output_dir = os.path.join('sc_tmp', run_name, 'sc_output', batch["protein_name"][_it][:-4])
+            sc_output_dir = os.path.join('sc_tmp', run_name, namename, 'sc_output', batch["protein_name"][0][:-4],  str(_it)) 
             os.makedirs(sc_output_dir, exist_ok=True)
             os.makedirs(os.path.join(sc_output_dir, 'fmif_seqs'), exist_ok=True)
             codesign_fasta = fasta.FastaFile()
@@ -131,19 +131,10 @@ def cal_rmsd(S_sp, S, batch, the_folding_model, pdb_path, mask_for_loss, save_pa
     return gen_foldtrue_mpnn_results_list, gen_true_mpnn_results_list, foldtrue_true_mpnn_results_list
 
 
-def parse_df(results_df):
-    avg_rmsd = results_df['bb_rmsd'].mean()
-    success_rate = results_df['bb_rmsd'].apply(lambda x: 1 if x < 2 else 0).mean()
-    return avg_rmsd, success_rate, np.format_float_positional(avg_rmsd, unique=False, precision=3), np.format_float_positional(success_rate, unique=False, precision=3)
-
-
 argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-argparser.add_argument("--path_for_pdbs", type=str, default="/home/ueharam1/projects4/seqft2/datasets/AlphaFold_model_PDBs", help="path for loading pdb files") 
-argparser.add_argument("--path_for_dpo_dicts", type=str, default="/data/wangc239/proteindpo_data/processed_data", help="path for loading ProteinDPO dict files") 
-
-argparser.add_argument("--path_for_outputs", type=str, default="/data/wangc239/protein_rewardbp", help="path for logs and model weights")
-# argparser.add_argument("--previous_checkpoint", type=str, default="", help="path for previous model weights, e.g. file.pt")
+argparser.add_argument("--path_for_pdbs", type=str, default="../datasets/AlphaFold_model_PDBs", help="path for loading pdb files") 
+argparser.add_argument("--path_for_outputs", type=str, default="../datasets", help="path for loading pdb files") 
 argparser.add_argument("--num_epochs", type=int, default=200, help="number of epochs to train for") # 200
 argparser.add_argument("--save_model_every_n_epochs", type=int, default=10, help="save model weights every n epochs")
 # argparser.add_argument("--reload_data_every_n_epochs", type=int, default=2, help="reload training data every n epochs")
@@ -187,15 +178,38 @@ argparser.add_argument("--alpha", type=float, default=0.001)
 argparser.add_argument("--gumbel_softmax_temp", type=float, default=0.5)
 
 argparser.add_argument("--decoding", type=str, default='original')
+argparser.add_argument("--reward_name", type=str, default = 'stability')
 argparser.add_argument("--dps_scale", type=float, default=0.0)
-argparser.add_argument("--tds_alpha", type=float, default=0.3)
+argparser.add_argument("--tds_alpha", type=float, default=0.0)
 argparser.add_argument("--repeatnum", type=int, default=5)
 
 args = argparser.parse_args()
-pdb_path = '/home/ueharam1/projects4/seqft2/datasets/AlphaFold_model_PDBs'
+pdb_path = '../datasets/AlphaFold_model_PDBs'
 max_len = 75  # Define the maximum length of proteins
 dataset = ProteinStructureDataset(pdb_path, max_len) # max_len set to 75 (sequences range from 31 to 74)
 loader = DataLoader(dataset, batch_size=1000, shuffle=False)
+
+folder_name = 'log'
+if not os.path.exists(folder_name):
+    os.makedirs(folder_name)
+    print(f"Folder '{folder_name}' created.")
+else:
+    print(f"Folder '{folder_name}' already exists.")
+
+folder_name = 'sc_tmp'
+if not os.path.exists(folder_name):
+    os.makedirs(folder_name)
+    print(f"Folder '{folder_name}' created.")
+else:
+    print(f"Folder '{folder_name}' already exists.")
+
+folder_name = '../.cache'
+if not os.path.exists(folder_name):
+    os.makedirs(folder_name)
+    print(f"Folder '{folder_name}' created.")
+else:
+    print(f"Folder '{folder_name}' already exists.")
+
 
 # make a dict of pdb filename: index
 for batch in loader:
@@ -204,7 +218,7 @@ for batch in loader:
     pdb_idx_dict = {pdb_filenames[i]: i for i in range(len(pdb_filenames))}
     break
 
-dpo_dict_path = '/home/ueharam1/projects4/seqft2/datasets/processed_data'
+dpo_dict_path = '../datasets/processed_data'
 dpo_train_dict = pickle.load(open(os.path.join(dpo_dict_path, 'dpo_train_dict_wt.pkl'), 'rb'))
 dpo_train_dataset = ProteinDPODataset(dpo_train_dict, pdb_idx_dict, pdb_structures)
 loader_train = DataLoader(dpo_train_dataset, batch_size=1, shuffle=True)
@@ -218,6 +232,9 @@ dpo_test_dataset = ProteinDPODataset(dpo_test_dict, pdb_idx_dict, pdb_structures
 loader_test = DataLoader(dpo_test_dataset, batch_size=1, shuffle=False)
 
 device = torch.device("cuda" if (torch.cuda.is_available()) else "cpu")
+
+
+'''
 new_fmif_model = ProteinMPNNFMIF(node_features=args.hidden_dim,
                     edge_features=args.hidden_dim,
                     hidden_dim=args.hidden_dim,
@@ -228,8 +245,11 @@ new_fmif_model = ProteinMPNNFMIF(node_features=args.hidden_dim,
                     # augment_eps=args.backbone_noise
                     )
 new_fmif_model.to(device)
+new_fmif_model.load_state_dict(torch.load('../datasets/artifacts/pretrained_model:v0/epoch300_step447702.pt')['model_state_dict'])
 new_fmif_model.finetune_init()
-new_fmif_model.load_state_dict(torch.load('/home/ueharam1/projects4/seqft2/datasets/model_100.ckpt'))
+'''
+
+# Load Pre-trained model 
 
 old_fmif_model = ProteinMPNNFMIF(node_features=args.hidden_dim,
                     edge_features=args.hidden_dim,
@@ -241,11 +261,13 @@ old_fmif_model = ProteinMPNNFMIF(node_features=args.hidden_dim,
                     # augment_eps=args.backbone_noise
                     )
 old_fmif_model.to(device)
-old_fmif_model.load_state_dict(torch.load('/home/ueharam1/projects4/seqft2/datasets/epoch300_step447702.pt')['model_state_dict'])
+old_fmif_model.load_state_dict(torch.load('../datasets/artifacts/pretrained_model:v0/epoch300_step447702.pt')['model_state_dict'])
 old_fmif_model.finetune_init()
 
 noise_interpolant = Interpolant(args)
 noise_interpolant.set_device(device)
+
+# Load reward model 
 
 reward_model = ProteinMPNNOracle(node_features=args.hidden_dim,
                     edge_features=args.hidden_dim,
@@ -257,13 +279,13 @@ reward_model = ProteinMPNNOracle(node_features=args.hidden_dim,
                     # augment_eps=args.backbone_noise
                     )
 reward_model.to(device)
-reward_model.load_state_dict(torch.load('/home/ueharam1/projects4/seqft2/datasets/epoch5_step17135.pt')['model_state_dict'])
-# reward_model.load_state_dict(torch.load('/data/wangc239/protein_oracle/outputs/azLcCvVyTH_20240716_172237/model_weights/epoch10_step37430.pt')['model_state_dict'])
+reward_model.load_state_dict(torch.load("../datasets/artifacts/reward_model:v2/epoch5_step17135.pt")['model_state_dict'])
 reward_model.finetune_init()
 # for param in reward_model.parameters():
 #     param.requires_grad = False
 reward_model.eval()
 
+'''
 reward_model_eval = ProteinMPNNOracle(node_features=args.hidden_dim,
                     edge_features=args.hidden_dim,
                     hidden_dim=args.hidden_dim,
@@ -274,28 +296,30 @@ reward_model_eval = ProteinMPNNOracle(node_features=args.hidden_dim,
                     # augment_eps=args.backbone_noise
                     )
 reward_model_eval.to(device)
-# TODO: change it to trainall model (DONE)
-reward_model_eval.load_state_dict(torch.load('/home/ueharam1/projects4/seqft2/datasets/epoch5_step17135.pt')['model_state_dict'])
+
+reward_model_eval.load_state_dict(torch.load("../datasets/artifacts/reward_model:v2/epoch5_step17135.pt")['model_state_dict'])
 reward_model_eval.finetune_init()
 # for param in reward_model_eval.parameters():
 #     param.requires_grad = False
 reward_model_eval.eval()
+'''
 
 folding_cfg = {
     'seq_per_sample': 1,
     'folding_model': 'esmf',
     'own_device': False,
     'pmpnn_path': './ProteinMPNN/',
-    'pt_hub_dir': '/data/ueharam/.cache/torch/',
-    'colabfold_path': '/data/wangc239/colabfold-conda/bin/colabfold_batch' # for AF2
+    'pt_hub_dir': '../.cache/',
+    #'colabfold_path': '/data/wangc239/colabfold-conda/bin/colabfold_batch' # for AF2
 }
 folding_cfg = SimpleNamespace(**folding_cfg)
 the_folding_model = folding_model.FoldingModel(folding_cfg)
 save_path = os.path.join(args.path_for_outputs, 'eval')
 
-# model_to_test_list = [new_fmif_model, old_fmif_model]
+
 model_to_test_list = [old_fmif_model]
 for testing_model in model_to_test_list:
+
     testing_model.eval()
     print(f'Testing Model... Sampling {args.decoding}')
     repeat_num= args.repeatnum
@@ -306,7 +330,8 @@ for testing_model in model_to_test_list:
     all_model_logl = []
     rewards_eval = []
     rewards = []
-    for _step, batch in tqdm(enumerate(loader_train)):
+
+    for _step, batch in tqdm(enumerate(loader_test)):
         X, S, mask, chain_M, residue_idx, chain_encoding_all, S_wt = featurize(batch, device)
         X = X.repeat(repeat_num, 1, 1, 1)
         mask = mask.repeat(repeat_num, 1)
@@ -314,41 +339,74 @@ for testing_model in model_to_test_list:
         residue_idx = residue_idx.repeat(repeat_num, 1)
         chain_encoding_all = chain_encoding_all.repeat(repeat_num, 1)
         mask_for_loss = mask*chain_M
-
-        
-
+ 
         if args.decoding == 'dps':
             S_sp, _, _ = noise_interpolant.sample_controlled_DPS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
                 guidance_scale=args.dps_scale, reward_model=reward_model)
-        elif args.decoding == 'tds':
-            S_sp, _, _ = noise_interpolant.sample_controlled_TDS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
-                reward_model=reward_model, alpha=args.tds_alpha)
-        elif args.decoding == 'tds2': 
-            S_sp, _, _ = noise_interpolant.sample_controlled_TDS2(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
-                reward_model=reward_model, alpha=args.tds_alpha)  
-        elif args.decoding == 'tds3':
-            new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path) 
-            S_sp, _, _ = noise_interpolant.sample_controlled_TDS3(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
-                reward_model= new_reward_model, alpha=args.tds_alpha ) 
-        elif args.decoding == 'tds4':
-            new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path) 
-            S_sp, _, _ = noise_interpolant.sample_controlled_TDS4(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
-                reward_model= new_reward_model, alpha=args.tds_alpha ) 
+            
+        elif args.decoding == 'SMC':
+            if args.reward_name == 'stability':
+                S_sp, _, _ = noise_interpolant.sample_controlled_SMC(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model=reward_model,reward_name = args.reward_name, alpha=args.tds_alpha)
+            elif args.reward_name == 'scRMSD':
+                from fmif.reward_RMSD import newreward_model
+                new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path) 
+                S_sp, _, _ = noise_interpolant.sample_controlled_SMC(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model= new_reward_model, reward_name = args.reward_name, repeats = repeat_num )
+            elif args.reward_name ==  'stability_rosetta':
+                from fmif.reward_energy import newreward_model
+                new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path)
+                S_sp, _, _ = noise_interpolant.sample_controlled_SMC(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model= new_reward_model, reward_name = args.reward_name, repeats = repeat_num) 
+  
+        elif args.decoding == 'SVDD': 
+            if args.reward_name == 'stability':
+                S_sp, _, _ = noise_interpolant.sample_controlled_SVDD(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model=reward_model, reward_name = args.reward_name)
+            elif args.reward_name == 'scRMSD':
+                from fmif.reward_RMSD import newreward_model
+                new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path) 
+                S_sp, _, _ = noise_interpolant.sample_controlled_SVDD(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model= new_reward_model, reward_name = args.reward_name )
+            elif args.reward_name ==  'stability_rosetta':
+                from fmif.reward_energy import newreward_model
+                new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path) 
+                S_sp, _, _ = noise_interpolant.sample_controlled_SVDD(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model= new_reward_model, reward_name = args.reward_name )
+
+        elif args.decoding == 'NestedIS': 
+            if args.reward_name == 'stability':
+                S_sp, _, _ = noise_interpolant.sample_controlled_NestedIS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model=reward_model, reward_name = args.reward_name)
+            elif args.reward_name == 'scRMSD':
+                from fmif.reward_RMSD import newreward_model
+                new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path) 
+                S_sp, _, _ = noise_interpolant.sample_controlled_NestedIS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model= new_reward_model, reward_name = args.reward_name )
+            elif args.reward_name ==  'stability_rosetta':
+                from fmif.reward_energy import newreward_model
+                new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path) 
+                S_sp, _, _ = noise_interpolant.sample_controlled_NestedIS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model= new_reward_model, reward_name = args.reward_name )     
+
         elif args.decoding == 'original':
             S_sp, _, _ = noise_interpolant.sample(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all)
         #S_sp: 30 times 47, 30 * 47 * 4* 3
-        dg_pred = reward_model(X, S_sp, mask, chain_M, residue_idx, chain_encoding_all)
-        if args.predict_ddg or not args.train_using_diff:
-            rewards.append(dg_pred.detach().cpu().numpy())
-            print("aaa", np.mean(dg_pred.detach().cpu().numpy()) )
-        else:
-            rewards.append((dg_pred - dg_pred_wt).detach().cpu().numpy())
-        dg_pred_eval = reward_model_eval(X, S_sp, mask, chain_M, residue_idx, chain_encoding_all)
-        if args.predict_ddg or not args.train_using_diff:
-            rewards_eval.append(dg_pred_eval.detach().cpu().numpy())
-        else:
-            rewards_eval.append((dg_pred_eval - dg_pred_wt).detach().cpu().numpy())
 
+
+        # Evaluation 
+        if args.reward_name == 'stability': 
+            final_reward = reward_model(X, S_sp, mask, chain_M, residue_idx, chain_encoding_all) 
+            final_reward = final_reward.cpu().detach().numpy()
+        elif args.reward_name == 'scRMSD':
+            final_reward = new_reward_model.cal_rmsd_reward(S_sp)
+        elif args.reward_name == 'stability_rosetta':
+            final_reward = new_reward_model.calculate_energy(S_sp)
+
+        rewards.append(final_reward)
+    
+        # For evaluation 
+        # Calculate recovery rate 
         true_false_sp = (S_sp == S).float()
         mask_for_loss = mask*chain_M
         valid_sp_acc += torch.sum(true_false_sp * mask_for_loss).cpu().data.numpy()
@@ -357,39 +415,22 @@ for testing_model in model_to_test_list:
         hoge = true_false_sp * mask_for_loss
         recovery_r = torch.sum(hoge,1)/torch.sum(mask_for_loss,1)
 
-        #I commented out to make it faster 
+        # Calculate likelihood
         model_logl = get_likelihood(old_fmif_model, (X, S_sp, mask, chain_M, residue_idx, chain_encoding_all), args.num_timesteps, device, noise_interpolant, eps=1e-5)
         all_model_logl.append(model_logl.detach().cpu().numpy())
 
+        # Calculate RMSD 
         gen_foldtrue_mpnn_results_list, gen_true_mpnn_results_list, foldtrue_true_mpnn_results_list = cal_rmsd(S_sp, S, batch, the_folding_model, pdb_path, mask_for_loss, save_path, args.decoding,  eval=True)
         gen_foldtrue_mpnn_results_merge.append(gen_foldtrue_mpnn_results_list)
         gen_true_mpnn_results_merge.extend(gen_true_mpnn_results_list)
         foldtrue_true_mpnn_results_merge.extend(foldtrue_true_mpnn_results_list)
 
-        #gen_foldtrue_mpnn_results_merge_dis = pd.concat(gen_foldtrue_mpnn_results_merge)
-        print(np.mean(np.array(pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])))
+        print("Reward", np.mean(final_reward) )
+        print("scRMSD", np.mean(np.array(pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])))
+        print("recovery", np.mean(recovery_r.detach().cpu().numpy()))
 
-        np.savez("/home/ueharam1/projects4/seqft2/multiflow/fmif/log/recovery_"+ args.decoding  + batch['protein_name'][0][:-4] + ".npz", reward = recovery_r.cpu().data.numpy()) 
-        np.savez("/home/ueharam1/projects4/seqft2/multiflow/fmif/log/bb_rmsd_"+ args.decoding  + batch['protein_name'][0][:-4] + ".npz", reward = pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])  
+        # Save Data 
+        np.savez("log/reward_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = final_reward)
+        np.savez("log/recovery_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = recovery_r.cpu().data.numpy()) 
+        np.savez("log/scRMSD_"+ args.decoding  + "_"+ args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])  
 
-    valid_sp_accuracy = valid_sp_acc / valid_sp_weights
-    print('Sequence recovery accuracy: ', valid_sp_accuracy)
-
-    #all_model_logl = np.hstack(all_model_logl)
-    #print('Model log likelihood: ', all_model_logl.mean())
-
-    rewards_eval = np.hstack(rewards_eval)
-    rewards = np.hstack(rewards)
-    #np.savez("./log/test" + args.decoding  + ".npz", rewards = rewards)
-    print('Mean reward: ', rewards_eval.mean(), "Positive reward prop %f"%np.mean(rewards_eval>0), "Mean reward (ft): ", rewards.mean(), "Positive reward prop (ft) %f"%np.mean(rewards>0))
-
-    #I commented out to make it faster 
-    '''
-    gen_foldtrue_mpnn_results_merge = pd.concat(gen_foldtrue_mpnn_results_merge)
-    gen_true_mpnn_results_merge = pd.concat(gen_true_mpnn_results_merge)
-    foldtrue_true_mpnn_results_merge = pd.concat(foldtrue_true_mpnn_results_merge)
-    valid_gen_foldtrue_rmsd, valid_gen_foldtrue_success_rate, valid_gen_foldtrue_rmsd_, valid_gen_foldtrue_success_rate_ = parse_df(gen_foldtrue_mpnn_results_merge)
-    valid_gen_true_rmsd, valid_gen_true_success_rate, valid_gen_true_rmsd_, valid_gen_true_success_rate_ = parse_df(gen_true_mpnn_results_merge)
-    valid_foldtrue_true_rmsd, valid_foldtrue_true_success_rate, valid_foldtrue_true_rmsd_, valid_foldtrue_true_success_rate_ = parse_df(foldtrue_true_mpnn_results_merge)
-    print("Validation gen_foldtrue_rmsd %s"%valid_gen_foldtrue_rmsd_, "Validation gen_true_rmsd %s"%valid_gen_true_rmsd_, "Validation foldtrue_true_rmsd %s"%valid_foldtrue_true_rmsd_, "Validation gen_foldtrue_success_rate %s"%valid_gen_foldtrue_success_rate_, "Validation gen_true_success_rate %s"%valid_gen_true_success_rate_, "Validation foldtrue_true_success_rate %s"%valid_foldtrue_true_success_rate_)
-    '''
