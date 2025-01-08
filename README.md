@@ -1,51 +1,54 @@
 # Tutorial: Inference-Time Alignment in Discrete Diffusion Models for Protein Design 
 
-This code accompanies the tutorial paper on inference-time alignment in diffusion models. Here, the goal is to optimize several reward functions in a protein inverse folding model ($p(x|c)$) where $x$ is a sequence, and $c$ is a backbone structure and a protein-inverse folding model. 
+This code accompanies the tutorial paper on inference-time alignment in diffusion models. Here, the goal is to optimize several reward functions in a protein inverse folding model ($p(x|c)$) where $x$ is a sequence, and $c$ is a backbone structure. 
+
+As propsoed in [Cambell and Yim et.al 2024]() and recent related works such as Evodiff and , a discrete diffusion model is used as a representative model for protein design that characetrized a natural protein-like space. Beyond these works, in our tutorial, we have exaplined how to optimize several downstream reward functions while keeping its ``naturalness''. In this repository, we see how it practically works in the context of protein design. 
 
 
-## Primary Code
-Go to **fmif** folder. Then, the inference-time technique can be run as follows.  
+## How to Run 
+Go to `./fmif` folder. Then, the inference-time technique can be run as follows.  
 
-```
-CUDA_VISIBLE_DEVICES=5 python eval_finetune.py --decoding 'SVDD' --reward_name 'stability'  
+```bash 
+CUDA_VISIBLE_DEVICES=4 python eval_finetune.py --decoding 'original' --reward_name 'scRMSD'  --repeatnum 20
 ```
 
 * **--decoding**: 
-  * **SMC**: Refer to Sec. XXX. 
-  * **SVDD** (value-based sampling): Refer to Sec. XXX.
-  * **NestedIS**: Refer to Sec. XXX. 
-  * **classifier guidance**: Refer to Sec. XXX   
+  * **SMC**: Refer to Sec. 3.1 or papers . 
+  * **SVDD** (a.k.a. value-based sampling): Sec. 3.2 or the paper 
+  * **NestedIS**: Refert to Sec. 3.3
+  * **Classifier guidance**: Refer to Sec. 5.2  or the paper such as  
 * **--rewards**:  
-  * **stability** (differentiable): This is a reward trained in XXX, which predicts Gibbs’s free energy from a sequence and a structure on the Megalscale dataset. For details, refer to XXX.  
-  * **scRMSD**(non-differentiable): $\|c- f(\hat x) \|$ where $f$ is a forward folding model (ESMfold). 
-  * **stability_rosetta** (non-differentiable): $g(f(\hat x))$ where $f$ is a forward folding model (ESMfold) and $g$ is physics-based reward feedback to calcuate energy.
+  * **stability**: This is a reward trained in [Wang and Uehara et al., 2024](https://arxiv.org/abs/2410.13643), which predicts Gibbs’s free energy from a sequence and a structure on the [Megalscale](https://www.nature.com/articles/s41586-023-06328-6). For details, refer to the [code](https://github.com/ChenyuWang-Monica/DRAKES).  
+  * **pLDDT** (non-differentiable): Common metric to characterize the confidecen of prediction. It has been used as a certain proxy of stability. 
+  * **scRMSD** (non-differentiable): $\|c- f(\hat x) \|$ where $f$ is a forward folding model ([ESMfold](https://github.com/facebookresearch/esm)). While the pre-trained model is already a conditoinal diffusoin model, this is considered to be usesful to robustify the generated protein further. 
+  * **stability_rosetta** (non-differentiable): $g(f(\hat x))$ where $f$ is a forward folding model ([ESMfold](https://github.com/facebookresearch/esm)) and $g$ is physics-based reward feedback to calcuate energy after packing ([Pyrosetta](https://www.pyrosetta.org/)). This task has been considered in 
+*  **--repeat_num**: When using SMC, SVDD, Nested IS, we need to choose the dupilicatoin hyperparaeter. 
+* **--alpha**: We set this as $0.5$ in SMC and classfier guidance by default. For SVDD, we choose $0.0$ by default. 
 
+
+## Outputs  
+
+We condition on several wild backbone strucres in vadliation protein datasets. We save each generated protein as a pdb fild in the folder `./sc_tmp/`. We also record several important statistics as a pandas format in the folder `./log`. 
 
 ## Results 
 
+Each blue point correponds to the median RMSD of generated samples for each backbone structure. For example, when optimizng scRMSD, for some protein, while naive inference procedures have certian incosisntecy, inference-time technique can make the generated result very consistent with the forward folding model.  
+
+![image](media.jpeg)
 
 ## Installation 
 
-* The pre-trained model is based on the code in multiflow code (XXX). Hence, we refer the installation procedure in XXX. 
-* Then, to introduce pre-trained models/datasets, run 
-```
+* The pre-trained model is based on the code in multiflow code [Campbell & Yim et al., 2024](https://github.com/jasonkyuyim/multiflow). 
+* Then, to introduce weights on pre-trained models, run 
+```bash 
 python download_model_data.py
 ```
-* To calculate the energy, we need Pyrosseta. 
+Then, the dataset will be placed on the folder `./datasets`
+* To calculate the energy, we need to install [Pyrosseta](https://www.pyrosetta.org/). 
 
-
-
------------------(Original code)------------------------
-
-# Multiflow: protein co-design with discrete and continuous flows
-
-Multiflow is a protein sequence and structure generative model based on our preprint: [Generative Flows on Discrete State-Spaces: Enabling Multimodal Flows with Applications to Protein Co-Design](https://arxiv.org/abs/2402.04997). 
-
-Our codebase is developed on top of [FrameFlow](https://github.com/microsoft/frame-flow).
-The sequence generative model is adpated from [Discrete Flow Models (DFM)](https://github.com/andrew-cr/discrete_flow_models).
+## Citation 
 
 If you use this codebase, then please cite
-
 ```
 @article{campbell2024generative,
   title={Generative Flows on Discrete State-Spaces: Enabling Multimodal Flows with Applications to Protein Co-Design},
@@ -55,153 +58,3 @@ If you use this codebase, then please cite
 }
 ```
 
-> [!NOTE]  
-> This codebase is very fresh. We expect there to be bugs and issues with other systems and environments.
-> Please create a github issue or pull request and we will attempt to help.
-
-LICENSE: MIT
-
-![multiflow-landing-page](https://github.com/jasonkyuyim/multiflow/blob/main/media/codesign.gif)
-
-## Installation
-
-We recommend using [mamba](https://mamba.readthedocs.io/en/latest/).
-If using mamba then use `mamba` in place of `conda`.
-
-```bash
-# Install environment with dependencies.
-conda env create -f multiflow.yml
-
-# Activate environment
-conda activate multiflow
-
-# Install local package.
-# Current directory should have setup.py.
-pip install -e .
-```
-
-Next you need to install torch-scatter manually depending on your torch version.
-(Unfortunately torch-scatter has some oddity that it can't be installed with the environment.)
-We use torch 2.0.1 and cuda 11.7 so we install the following
-
-```bash
-pip install torch-scatter -f https://data.pyg.org/whl/torch-2.0.1+cu117.html
-```
-
-If you use a different torch then that can be found with the following.
-```bash
-# Find your installed version of torch
-python
->>> import torch
->>> torch.__version__
-# Example: torch 2.0.1+cu117
-```
-
-> [!WARNING]  
-> You will likely run into the follow error from DeepSpeed
-```bash
-ModuleNotFoundError: No module named 'torch._six'
-```
-If so, replace `from torch._six import inf` with `from torch import inf`.
-* `/path/to/envs/site-packages/deepspeed/runtime/utils.py`
-* `/path/to/envs/site-packages/deepspeed/runtime/zero/stage_1_and_2.py`
-
-where `/path/to/envs` is replaced with your path. We would appreciate a pull request to avoid this monkey patch!
-
-## Wandb
-
-Our training relies on logging with wandb. Log in to Wandb and make an account.
-Authorize Wandb [here](https://wandb.ai/authorize).
-
-## Data
-
-We host the datasets on Zenodo [here](https://zenodo.org/records/10714631?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjJjMTk2YjlmLTM4OTUtNGVhYi1hODcxLWE1ZjExOTczY2IzZiIsImRhdGEiOnt9LCJyYW5kb20iOiI4MDY5ZDUzYjVjMTNhNDllMDYxNmI3Yjc2NjcwYjYxZiJ9.C2eZZmRu-nu7H330G-DkV5kttfjYB3ANozdOMNm19uPahvtLrDRvd_4Eqlyb7lp24m06e4OHhHQ4zlj68S1O_A).
-Download the following files,
-* `real_train_set.tar.gz` (2.5 GB)
-* `synthetic_train_set.tar.gz` (220 MB)
-* `test_set.tar.gz` (347 MB)
-Next, untar the files
-```bash
-# Uncompress training data
-mkdir train_set
-tar -xzvf real_train_set.tar.gz -C train_set/
-tar -xzvf synthetic_train_set.tar.gz -C train_set/
-
-# Uncompress test data
-mkdir test_set
-tar -xzvf test_set.tar.gz -C test_set/
-```
-The resulting directory structure should look like
-```bash
-<current_dir>
-├── train_set
-│   ├── processed_pdb
-|   |   ├── <subdir>
-|   |   |   └── <protein_id>.pkl
-│   ├── processed_synthetic
-|   |   └── <protein_id>.pkl
-├── test_set
-|   └── processed
-|   |   ├── <subdir>
-|   |   |   └── <protein_id>.pkl
-...
-```
-Our experiments read the data by using relative paths. Keep the directory structure like this to avoid bugs.
-
-## Training
-
-The command to run co-design training is the following, 
-```bash
-python -W ignore multiflow/experiments/train_se3_flows.py -cn pdb_codesign
-```
-We use [Hydra](https://hydra.cc/) to maintain our configs. 
-The training config is found here `multiflow/configs/pdb_codesign.yaml`.
-
-Most important fields:
-* `experiment.num_devices`: Number of GPUs to use for training. Default is 2.
-* `data.sampler.max_batch_size`: Maximum batch size. We use dynamic batch sizes depending on `data.sampler.max_num_res_squared`. Both these parameters need to be tuned for your GPU memory. Our default settings are set for a 40GB Nvidia RTX card.
-* `data.sampler.max_num_res_squared`: See above.
-
-
-## Inference
-
-We provide pre-trained model weights at this [Zenodo link](https://zenodo.org/records/10714631?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjJjMTk2YjlmLTM4OTUtNGVhYi1hODcxLWE1ZjExOTczY2IzZiIsImRhdGEiOnt9LCJyYW5kb20iOiI4MDY5ZDUzYjVjMTNhNDllMDYxNmI3Yjc2NjcwYjYxZiJ9.C2eZZmRu-nu7H330G-DkV5kttfjYB3ANozdOMNm19uPahvtLrDRvd_4Eqlyb7lp24m06e4OHhHQ4zlj68S1O_A).
-
-Run the following to unpack the weights
-```bash
-tar -xzvf weights.tar.gz
-```
-
-The following three tasks can be performed. 
-```bash
-# Unconditional Co-Design
-python -W ignore multiflow/experiments/inference_se3_flows.py -cn inference_unconditional
-
-# Inverse Folding
-python -W ignore multiflow/experiments/inference_se3_flows.py -cn inference_inverse_folding
-
-# Forward Folding
-python -W ignore multiflow/experiments/inference_se3_flows.py -cn inference_forward_folding
-```
-
-### Configs
-
-Config locations:
-- configs/inference_unconditional.yaml: unconditional sampling config.
-- configs/inference_inverse_folding.yaml: inverse folding config.
-- configs/inference_forward_folding.yaml: forward folding config.
-
-Most important fields:
-- inference.num_gpus: Number of GPUs to use. I typically use 2 or 4.
-
-- inference.{...}_ckpt_path: Checkpoint path for hallucination.
-
-- inference.interpolant.sampling.num_timesteps: Number of steps in the flow.
-
-- inference.folding.folding_model: `esmf` for ESMFold and `af2` for AlphaFold2.
-
-[Only for hallucination]
-- inference.samples.samples_per_length: Number of samples per length.
-- inference.samples.min_length: Start of length range to sample.
-- inference.samples.max_length: End of length range to sample.
-- inference.samples.length_subset: Subset of lengths to sample. Will override min_length and max_length.

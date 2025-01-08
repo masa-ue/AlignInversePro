@@ -221,7 +221,7 @@ for batch in loader:
 dpo_dict_path = '../datasets/processed_data'
 dpo_train_dict = pickle.load(open(os.path.join(dpo_dict_path, 'dpo_train_dict_wt.pkl'), 'rb'))
 dpo_train_dataset = ProteinDPODataset(dpo_train_dict, pdb_idx_dict, pdb_structures)
-loader_train = DataLoader(dpo_train_dataset, batch_size=1, shuffle=True)
+loader_train = DataLoader(dpo_train_dataset, batch_size=1, shuffle=False)
 dpo_valid_dict = pickle.load(open(os.path.join(dpo_dict_path, 'dpo_valid_dict_wt.pkl'), 'rb'))
 dpo_valid_dataset = ProteinDPODataset(dpo_valid_dict, pdb_idx_dict, pdb_structures)
 loader_valid = DataLoader(dpo_valid_dataset, batch_size=1, shuffle=False)
@@ -230,6 +230,11 @@ dpo_test_dict = pickle.load(open(os.path.join(dpo_dict_path, 'dpo_test_dict_wt.p
 #dpo_test_dict = {k: dpo_test_dict[k] for k in keys_to_include}
 dpo_test_dataset = ProteinDPODataset(dpo_test_dict, pdb_idx_dict, pdb_structures)
 loader_test = DataLoader(dpo_test_dataset, batch_size=1, shuffle=False)
+
+dpo_train50 = {k: dpo_train_dict[k] for k in list(dpo_train_dict)[:50]}
+dpo_train_dataset50 = ProteinDPODataset(dpo_train50, pdb_idx_dict, pdb_structures)
+loader_train50 = DataLoader(dpo_train_dataset50, batch_size=1, shuffle=False)
+
 
 device = torch.device("cuda" if (torch.cuda.is_available()) else "cpu")
 
@@ -331,7 +336,7 @@ for testing_model in model_to_test_list:
     rewards_eval = []
     rewards = []
 
-    for _step, batch in tqdm(enumerate(loader_test)):
+    for _step, batch in tqdm(enumerate(loader_train50)):
         X, S, mask, chain_M, residue_idx, chain_encoding_all, S_wt = featurize(batch, device)
         X = X.repeat(repeat_num, 1, 1, 1)
         mask = mask.repeat(repeat_num, 1)
@@ -399,9 +404,16 @@ for testing_model in model_to_test_list:
             final_reward = reward_model(X, S_sp, mask, chain_M, residue_idx, chain_encoding_all) 
             final_reward = final_reward.cpu().detach().numpy()
         elif args.reward_name == 'scRMSD':
+            from fmif.reward_RMSD import newreward_model
+            new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path)
             final_reward = new_reward_model.cal_rmsd_reward(S_sp)
         elif args.reward_name == 'stability_rosetta':
+            from fmif.reward_energy import newreward_model
+            new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path) 
             final_reward = new_reward_model.calculate_energy(S_sp)
+        else:
+            final_reward = reward_model(X, S_sp, mask, chain_M, residue_idx, chain_encoding_all) 
+            final_reward = final_reward.cpu().detach().numpy()
 
         rewards.append(final_reward)
     
