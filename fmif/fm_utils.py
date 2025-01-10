@@ -698,7 +698,7 @@ class Interpolant:
             self,
             model,
             X, mask, chain_M, residue_idx, chain_encoding_all,
-            reward_model, reward_name, repeats = 20 
+            reward_model, reward_name, repeats = 3
         ):
 
         num_batch, num_res = mask.shape
@@ -757,25 +757,34 @@ class Interpolant:
                 aatypes_t_2_list = [ aatypes_t_1 * copy_flag + categorical_list[iii] * (1 - copy_flag) for iii in range(repeats) ] 
 
                 scores = []
+                improve_hot_x0_list = [] 
                 for i in range(repeats): 
                     copy_flag_pes = (aatypes_t_2_list[i] != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
                     expected_x0_pes = model(X, aatypes_t_2_list[i], mask, chain_M, residue_idx, chain_encoding_all) # Calcualte E[x_0|x_{t-1}]
                     one_hot_x0 = torch.argmax(expected_x0_pes, dim = 2)
                     improve_hot_x0 = copy_flag_pes * aatypes_t_2_list[i] + (1 - copy_flag_pes) *  one_hot_x0
-                    if reward_name == 'stability':
-                        reward = reward_model(X, 1.0 * F.one_hot(improve_hot_x0, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all)
-                    elif reward_name == 'scRMSD':
-                        reward = reward_model.cal_rmsd_reward(improve_hot_x0)
-                        reward  = np.array(reward)
-                        reward = -torch.from_numpy(reward).to(self._device)
-                    elif reward_name == 'stability_rosetta':
-                        reward = reward_model.calculate_energy(improve_hot_x0)
-                        reward  = np.array(reward)
-                        reward = -torch.from_numpy(reward).to(self._device)
-                    scores.append(reward.squeeze())
+                    improve_hot_x0_list.append(improve_hot_x0)
 
-                scores = torch.stack(scores, dim=1)
-                final_sample_indices = torch.argmax(scores, dim=1).squeeze()  # Indices, Shape [batch_size]
+                improve_hot_x0 = torch.cat(improve_hot_x0_list) 
+                
+                if reward_name == 'stability':
+                    reward_list = []
+                    for seq in improve_hot_x0_list:
+                        reward_list.append(reward_model(X, 1.0 * F.one_hot(seq, num_classes= 22) , mask, chain_M, residue_idx, chain_encoding_all))
+                    reward = torch.cat(reward_list) 
+                elif reward_name == "LDDT": 
+                    reward = reward_model.cal_reward(improve_hot_x0)
+                elif reward_name == 'scRMSD':
+                    reward = reward_model.cal_rmsd_reward(improve_hot_x0)
+                    reward  = np.array(reward)
+                    reward = -torch.from_numpy(reward).to(self._device)
+                elif reward_name == 'stability_rosetta':
+                    reward = reward_model.calculate_energy(improve_hot_x0)
+                    reward  = np.array(reward)
+                    reward = -torch.from_numpy(reward).to(self._device)
+
+                scores = torch.reshape(reward, (repeats, int(len(reward)/repeats)))
+                final_sample_indices = torch.argmax(scores, dim=0).squeeze()  # Indices, Shape [batch_size]
                 final_samples = [aatypes_t_2_list[final_sample_indices[j]][j,:] for j in range(aatypes_t_1.size(0))]  # Select the chosen samples using gathered indices
                 aatypes_t_2 = torch.stack(final_samples, dim=0)                            
 
@@ -863,6 +872,8 @@ class Interpolant:
                         reward = reward_model.cal_rmsd_reward(improve_hot_x0)
                         reward  = np.array(reward)
                         reward = -torch.from_numpy(reward).to(self._device)
+                    elif reward_name == "LDDT": 
+                        reward = reward_model.cal_reward(improve_hot_x0)
                     elif reward_name == 'stability_rosetta':
                         reward = reward_model.calculate_energy(improve_hot_x0)
                         reward  = np.array(reward)

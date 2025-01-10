@@ -1,0 +1,6 @@
+header,sequence,bb_rmsd,mean_plddt,folded_path,sample_path,seq_recovery
+codesign_seq_1,ITVTITYDPATGNYTITITFPDGTVIVIVIPKSALPAFLAALPPDFTIV,0.7223273074788614,87.89466857910156,sc_tmp/eval/SVDD/sc_output/r11_569_TrROS_Hall/0/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/r11_569_TrROS_Hall.pdb,0.40816324949264526
+codesign_seq_1,ITVTITYDPSTGKYVITITTPDGTVIVIEIPESALPAFLALLPPDFTIV,1.1330430181895252,81.36492919921875,sc_tmp/eval/SVDD/sc_output/r11_569_TrROS_Hall/1/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/r11_569_TrROS_Hall.pdb,0.4285714328289032
+codesign_seq_1,IIVKITFDPATGTVEITITTPDGTVVVIVIPLSELPAFLAALPPDFVIV,0.6861735955170231,87.13188934326172,sc_tmp/eval/SVDD/sc_output/r11_569_TrROS_Hall/2/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/r11_569_TrROS_Hall.pdb,0.36734694242477417
+codesign_seq_1,IEVKITYNPETGTYEITITFPDGTVIKIVIPKSELPAFLAALPPNVKIV,0.5787000568829898,89.36203002929688,sc_tmp/eval/SVDD/sc_output/r11_569_TrROS_Hall/3/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/r11_569_TrROS_Hall.pdb,0.44897958636283875
+codesign_seq_1,IVVTITYDPETGTYVITITTPDGTVTVIVIPEEALPAFLAALPPDVVIV,0.5762126251973968,90.17361450195312,sc_tmp/eval/SVDD/sc_output/r11_569_TrROS_Hall/4/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/r11_569_TrROS_Hall.pdb,0.44897958636283875

@@ -1,0 +1,6 @@
+header,sequence,bb_rmsd,mean_plddt,folded_path,sample_path,seq_recovery
+codesign_seq_1,IVTVLKWGDITIVLTGASPALIAALKAAMAAGADLATLAALIAAAAA,0.8107130008611076,92.06780242919922,sc_tmp/eval/SVDD/sc_output/EA|run2_0325_0005/0/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/EA:run2_0325_0005.pdb,0.27659574151039124
+codesign_seq_1,TVTVLKVGDTTLVIEGAPPALIATLKALAAAGAGLAELAAAIAAALA,1.0863336021635068,89.99163818359375,sc_tmp/eval/SVDD/sc_output/EA|run2_0325_0005/1/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/EA:run2_0325_0005.pdb,0.2978723347187042
+codesign_seq_1,PVTVLKWGDVTLVLEGASPALIATLKALMAAGASLAELAAAIAAALA,0.928575922461857,90.8323745727539,sc_tmp/eval/SVDD/sc_output/EA|run2_0325_0005/2/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/EA:run2_0325_0005.pdb,0.27659574151039124
+codesign_seq_1,VVTVLKWGDVTLVLEGAPPELIAALKAAMAAGAGLEELAALIAAALA,1.0052945186036935,90.2490234375,sc_tmp/eval/SVDD/sc_output/EA|run2_0325_0005/3/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/EA:run2_0325_0005.pdb,0.2978723347187042
+codesign_seq_1,TVTVLVVGDTVLVLEGAPPALLATLEALAAAGAGLAELAAAIAAALA,1.3363152559393512,87.87979888916016,sc_tmp/eval/SVDD/sc_output/EA|run2_0325_0005/4/folded/folded_codesign_seq_1.pdb,../datasets/AlphaFold_model_PDBs/EA:run2_0325_0005.pdb,0.27659574151039124

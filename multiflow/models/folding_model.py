@@ -71,6 +71,23 @@ class FoldingModel:
             folded_outputs['seq'].append(string)
         return pd.DataFrame(folded_outputs)
 
+    @torch.no_grad()
+    def esmf_model_parallel(self, seqs):
+        if self._esmf is None:
+            self._print_logger.info(f'Loading ESMFold on device {self.device}')
+            torch.hub.set_dir(self._cfg.pt_hub_dir)
+            self._esmf = esm.pretrained.esmfold_v1().eval().to(self.device)
+        
+        strings = []
+        for string in seqs:
+            # Run ESMFold
+            # Need to convert unknown amino acids to alanine since ESMFold 
+            # doesn't like them and will remove them...
+            strings.append(string.replace('X', 'A'))
+          
+        esmf_outputs = self._esmf.infer(strings)
+        return esmf_outputs
+    
     def _af2_model(self, fasta_path, output_dir):
         af2_args = [
             self._cfg.colabfold_path,

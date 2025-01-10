@@ -53,8 +53,6 @@ from types import SimpleNamespace
 from multiprocessing import Pool
 
 
-
-
 class newreward_model:
     def __init__(self,batch, the_folding_model, pdb_path, mask_for_loss, save_path):
         self.batch = batch 
@@ -63,40 +61,10 @@ class newreward_model:
         self.mask_for_loss = mask_for_loss
         self.save_path = save_path 
 
-    def cal_rmsd_reward(self, S_sp):
-        batch = self.batch
+    def cal_reward(self, S_sp):
         the_folding_model = self.the_folding_model
-        pdb_path = self.pdb_path
-        mask_for_loss = self.mask_for_loss
-        save_path = self.save_path 
-        run_name = 'pseudo'
-
-        
-        sc_output_dir = os.path.join('sc_tmp', run_name, 'pseduo_sc_output', batch["protein_name"][0][:-4])
-        the_pdb_path = os.path.join(pdb_path, batch['WT_name'][0])
-    
-        foldtrue_true_mpnn_results_list = []
-        os.makedirs(sc_output_dir, exist_ok=True)
-        os.makedirs(os.path.join(sc_output_dir, 'fmif_seqs'), exist_ok=True)
-        for _it, ssp in enumerate(S_sp):
-   
-            codesign_fasta = fasta.FastaFile()
-            codesign_fasta['codesign_seq_1'] = "".join([ALPHABET[x] for _ix, x in enumerate(ssp) if mask_for_loss[_it][_ix] == 1])
-            codesign_fasta_path = os.path.join(sc_output_dir, 'fmif_seqs', 'codesign.fa')
-            codesign_fasta.write(codesign_fasta_path)
-
-            folded_dir = os.path.join(sc_output_dir, 'folded')
-            if os.path.exists(folded_dir):
-                shutil.rmtree(folded_dir)
-            os.makedirs(folded_dir, exist_ok=False)
-
-            folded_output = the_folding_model.fold_fasta(codesign_fasta_path, folded_dir)
-            
-            # folded generated with pdb true
-            foldtrue_true_mpnn_results = mu.process_folded_outputs(the_pdb_path, folded_output)
-        
-            foldtrue_true_mpnn_results_list.append(foldtrue_true_mpnn_results['bb_rmsd'][0])
-       
-        return foldtrue_true_mpnn_results_list
+        sequences = ["".join([ALPHABET[x] for _ix, x in enumerate(ssp)]) for _it, ssp in enumerate(S_sp) ] 
+        fold_outputs = the_folding_model.esmf_model_parallel(sequences)
+        return fold_outputs['mean_plddt']
     
    
