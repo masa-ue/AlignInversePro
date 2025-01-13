@@ -18,9 +18,8 @@ CUDA_VISIBLE_DEVICES=5 python eval_finetune.py --decoding 'SVDD' --reward_name '
   * **Classifier guidance**: Refer to Sec. 5.2  or the paper such as  
 * **--rewards**:  
   * **stability**: This is a reward function trained in [Wang and Uehara et al., 2024](https://arxiv.org/abs/2410.13643), which predicts Gibbs’s free energy from a sequence and a structure on the [Megalscale dataset](https://www.nature.com/articles/s41586-023-06328-6). For details, refer to the [code](https://github.com/ChenyuWang-Monica/DRAKES).  
-  * **LDDT** (non-differentiable): Common metric to characterize the confidecen of prediction. It has been used as a certain proxy of stability. 
-  * **scRMSD** (non-differentiable): $\|c- f(\hat x) \|$ where $f$ is a forward folding model ([ESMfold](https://github.com/facebookresearch/esm)). While the pre-trained model is already a conditoinal diffusoin model, this is considered to be usesful to robustify the generated protein further. 
-  * **stability_rosetta** (non-differentiable): $g(f(\hat x))$ where $f$ is a forward folding model ([ESMfold](https://github.com/facebookresearch/esm)) and $g$ is physics-based reward feedback to calcuate energy after packing ([Pyrosetta](https://www.pyrosetta.org/)). This task has been considered in 
+  * **LDDT**: Common metric to characterize the confidecen of prediction. It has been used as a certain proxy of stability. 
+  * **scRMSD**: $\|c- f(\hat x) \|$ where $f$ is a forward folding model ([ESMfold](https://github.com/facebookresearch/esm)). While the pre-trained model is already a conditoinal diffusoin model, this is considered to be usesful to robustify the generated protein further. 
 *  **--repeat_num**: When using SMC, SVDD, Nested IS, we need to choose the dupilicatoin hyperparaeter.
 * **--batchsize**: Batch size  
 * **--alpha**: We set this as $0.5$ in SMC and classfier guidance by default. For SVDD, we choose $0.0$ by default. 

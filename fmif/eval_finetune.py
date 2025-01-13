@@ -325,7 +325,7 @@ for testing_model in model_to_test_list:
             from fmif.reward_PLDDT import newreward_model
             new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path) 
         elif args.reward_name == 'scRMSD':
-            from fmif.reward_RMSD_para import newreward_model
+            from fmif.reward_RMSD_new import newreward_model
             new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path)
         elif args.reward_name ==  'stability_rosetta':
             from fmif.reward_energy import newreward_model

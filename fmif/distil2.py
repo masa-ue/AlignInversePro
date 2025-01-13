@@ -50,7 +50,7 @@ from tqdm import tqdm
 from multiflow.models import folding_model
 from types import SimpleNamespace
 
-from fmif.reward_RMSD import newreward_model
+from fmif.reward_RMSD_old import newreward_model
 
 def cal_rmsd(S_sp, S, batch, the_folding_model, pdb_path, mask_for_loss, save_path, namename, eval=False):
     with torch.no_grad():

@@ -49,9 +49,10 @@ from fmif.fm_utils import Interpolant, get_likelihood
 from tqdm import tqdm
 from multiflow.models import folding_model
 from types import SimpleNamespace
+from openfold.utils.superimposition import superimpose
 
 from multiprocessing import Pool
-
+from multiflow.data import utils as du
 
 
 
@@ -80,26 +81,31 @@ class newreward_model:
         os.makedirs(os.path.join(sc_output_dir, 'fmif_seqs'), exist_ok=True)
 
         sequences = ["".join([ALPHABET[x] for _ix, x in enumerate(ssp)]) for _it, ssp in enumerate(S_sp) ] 
-        fold_outputs = the_folding_model.esmf_model_parallel(sequences)
-      
-        for _it, ssp in enumerate(S_sp):
-            codesign_fasta = fasta.FastaFile()
-            codesign_fasta['codesign_seq_1'] = "".join([ALPHABET[x] for _ix, x in enumerate(ssp) if mask_for_loss[_it][_ix] == 1])
-            codesign_fasta_path = os.path.join(sc_output_dir, 'fmif_seqs', 'codesign.fa')
-            codesign_fasta.write(codesign_fasta_path)
-            folded_dir = os.path.join(sc_output_dir, 'folded')
-            if os.path.exists(folded_dir):
-                shutil.rmtree(folded_dir)
-            os.makedirs(folded_dir, exist_ok=False)
-            folded_output = the_folding_model.fold_fasta(codesign_fasta_path, folded_dir)
-            # folded generated with pdb true
-            foldtrue_true_mpnn_results = mu.process_folded_outputs(the_pdb_path, folded_output)
-        
-            foldtrue_true_mpnn_results_list.append(foldtrue_true_mpnn_results['bb_rmsd'][0])
- 
-  
+        fold_outputs = the_folding_model.esmf_model_parallel_sturcture(sequences)
+        #foldtrue_true_mpnn_results = mu.process_folded_outputs_modify(the_pdb_path)
 
+        all_atoms = fold_outputs['atom37_atom_exists']
+        batchsize = all_atoms.shape[0]
+        length = all_atoms.shape[1]
 
-        return foldtrue_true_mpnn_results_list
+        sample_feats = du.parse_pdb_feats('sample', the_pdb_path)
+        sample_bb_pos = sample_feats['atom_positions'][:, :3].reshape(-1, 3) #141 times 3 
+
+        def _calc_bb_rmsd(mask, sample_bb_pos, folded_bb_pos):
+            aligned_rmsd = superimpose(
+                torch.tensor(sample_bb_pos)[None],
+                torch.tensor(folded_bb_pos[None]),
+                mask[:, None].repeat(1, 3).reshape(-1)
+            )
+            return aligned_rmsd[1].item()
+         
+        bb_rmsd_list = []
+        for _it in range(batchsize):
+            res_mask = torch.ones(length)
+            folded_feats  = du.parse_pdb_feats('folded', "log/generated_proteins" + str(_it) + ".pdb")
+            folded_bb_pos = folded_feats['atom_positions'][:, :3].reshape(-1, 3) #141 times 3 
+            bb_rmsd = _calc_bb_rmsd(res_mask, sample_bb_pos, folded_bb_pos)
+            bb_rmsd_list.append(bb_rmsd)
+        return bb_rmsd_list
     
    

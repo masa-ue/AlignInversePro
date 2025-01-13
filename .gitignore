@@ -19,6 +19,8 @@ datasets/AlphaFold_model_PDBs/
 datasets/processed_data/
 datasets/wandb/
 *.pt
+*.csv
 .cache/
 fmif/sc_tmp/
 log2/
+*.pdb

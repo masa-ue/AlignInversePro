@@ -137,7 +137,31 @@ def t_stratified_loss(batch_t, batch_loss, num_bins=4, loss_name=None):
     return stratified_losses
 
 
+def process_folded_outputs_modify(sample_path, true_bb_pos=None,sizesize = 15):
+  
 
+    sample_feats = du.parse_pdb_feats('sample', sample_path)
+    sample_ca_pos = sample_feats['bb_positions'] #47 * 3
+ 
+    sample_bb_pos = sample_feats['atom_positions'][:, :3].reshape(-1, 3) #141 times 3
+     
+    def _calc_bb_rmsd(mask, sample_bb_pos, folded_bb_pos):
+        aligned_rmsd = superimpose(
+            torch.tensor(sample_bb_pos)[None],
+            torch.tensor(folded_bb_pos[None]),
+            mask[:, None].repeat(1, 3).reshape(-1)
+        )
+        return aligned_rmsd[1].item()
+
+    for i in range(len(sizesize)):
+        folded_feats = du.parse_pdb_feats('folded', "generated_protein")
+        folded_ca_pos = folded_feats['bb_positions']
+        folded_bb_pos = folded_feats['atom_positions'][:, :3].reshape(-1, 3)
+        res_mask = torch.ones(folded_ca_pos.shape[0])
+        bb_rmsd = _calc_bb_rmsd(res_mask, sample_bb_pos, folded_bb_pos)
+    return bb_rmsd
+
+   
 def process_folded_outputs(sample_path, folded_output, true_bb_pos=None):
     mpnn_results = {
         'header': [],
