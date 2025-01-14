@@ -222,6 +222,7 @@ if __name__ == "__main__":
     output = folding_model.infer(random_seq)
     pdbs = folding_model.output_to_pdb(output)
 
+    # metrics
     ptm = esm_to_ptm(output)
     plddt = esm_to_plddt(output)
     tm = pdb_to_tm(pdb_value_str, pdbs[0])
