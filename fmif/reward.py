@@ -169,11 +169,33 @@ def pdb_to_surface_expose_score(gen_pdb_file, start=None, end=None):
     return 1.0 - sum(surface) / sum(residue_mask)
 
 
-# def symmetry_score():
-#     """
-#     protomer is chain
-#     """
-#     pass
+def symmetry_score(gen_pdb_file, starts, ends, all_to_all_protomer_symmetry=False):
+    """
+    starts: start residue index list
+    ends: end residue index list
+    """
+    atom_array = pdb_file_to_atomarray(gen_pdb_file)
+
+    assert len(starts) == len(ends)
+    centers_of_mass = []
+    for i in range(len(starts)):
+        start, end = starts[i], ends[i]
+        backbone_coordinates = get_backbone_atoms(
+            atom_array[
+                np.logical_and(
+                    atom_array.res_id >= start,
+                    atom_array.res_id < end,
+                )
+            ]
+        ).coord
+        centers_of_mass.append(get_center_of_mass(backbone_coordinates))
+    centers_of_mass = np.vstack(centers_of_mass)
+
+    return (
+        float(np.std(pairwise_distances(centers_of_mass)))
+        if all_to_all_protomer_symmetry
+        else float(np.std(adjacent_distances(centers_of_mass)))
+    )
 
 
 def pdb_to_globularity_score(gen_pdb_file, start=None, end=None):

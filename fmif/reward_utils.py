@@ -57,6 +57,12 @@ def pairwise_distances(coordinates: np.ndarray) -> np.ndarray:
     return distance_matrix[np.triu_indices(distance_matrix.shape[0], k=1)]
 
 
+def adjacent_distances(coordinates: np.ndarray) -> np.ndarray:
+    assert _is_Nx3(coordinates), "Coordinates must be Nx3."
+    m = coordinates - np.roll(coordinates, shift=1, axis=0)
+    return np.linalg.norm(m, axis=-1)
+
+
 def get_backbone_atoms(atoms: AtomArray) -> AtomArray:
     return atoms[
         (atoms.atom_name == "CA") | (atoms.atom_name == "N") | (atoms.atom_name == "C")
