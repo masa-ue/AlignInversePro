@@ -724,7 +724,7 @@ class Interpolant:
             pred_logits_wo_mask = pred_logits_1.clone()
             pred_logits_wo_mask[:, :, mu.MASK_TOKEN_INDEX] = -1e9
             pred_aatypes_1 = torch.argmax(pred_logits_wo_mask, dim=-1)
-            # pred_aatypes_1 = torch.argmax(pred_logits_1, dim=-1)
+
             clean_traj.append(pred_aatypes_1.detach().cpu())
 
             if self._cfg.do_purity:
@@ -750,11 +750,13 @@ class Interpolant:
 
                 
                 q_xs[:, :, mu.MASK_TOKEN_INDEX] = move_chance_s #[:, :, 0]
-                # _x = torch.multinomial(q_xs.view(-1, q_xs.shape[-1]), num_samples=1).view(num_batch, num_res)
-          
+            
                 copy_flag = (aatypes_t_1 != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
                 categorical_list = [ _sample_categorical(q_xs) for iii in range(repeats) ]
                 aatypes_t_2_list = [ aatypes_t_1 * copy_flag + categorical_list[iii] * (1 - copy_flag) for iii in range(repeats) ] 
+                
+                # Clean sample (Just used for the last step)
+                clean_aatypes_t_1 = aatypes_t_1 * copy_flag + pred_aatypes_1 * (1 - copy_flag)
 
                 scores = []
                 improve_hot_x0_list = [] 
@@ -796,7 +798,7 @@ class Interpolant:
         # We only integrated to min_t, so need to make a final step
         t_1 = ts[-1]
         print(torch.mean(scores))
-        return pred_aatypes_1, prot_traj, clean_traj
+        return clean_aatypes_t_1, prot_traj, clean_traj
     
     def sample_controlled_NestedIS(
             self,
