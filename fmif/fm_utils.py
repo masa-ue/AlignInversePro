@@ -799,7 +799,427 @@ class Interpolant:
         t_1 = ts[-1]
         print(torch.mean(scores))
         return clean_aatypes_t_1, prot_traj, clean_traj
-    
+
+    def sample_controlled_SVDD_BFS(
+            self,
+            model,
+            X, mask, chain_M, residue_idx, chain_encoding_all,
+            reward_model, reward_name, repeats=3, depth=3, search_schudule='all', drop_schudule=None, oversamplerate=2
+    ):
+
+        eval_sp_size, num_res = mask.shape
+        if drop_schudule is not None:
+            batch_size_per_gpu = eval_sp_size * oversamplerate  # oversample
+            num_batch = batch_size_per_gpu
+            uni_X = X[0]
+            uni_mask = mask[0]
+            uni_chain_M = chain_M[0]
+            uni_residue_idx = residue_idx[0]
+            uni_chain_encoding_all = chain_encoding_all[0]
+            batch_X = uni_X.repeat(num_batch, 1, 1, 1)
+            batch_mask = uni_mask.repeat(num_batch, 1)
+            batch_chain_M = uni_chain_M.repeat(num_batch, 1)
+            batch_residue_idx = uni_residue_idx.repeat(num_batch, 1)
+            batch_chain_encoding_all = uni_chain_encoding_all.repeat(num_batch, 1)
+        else:
+            batch_size_per_gpu = eval_sp_size
+            num_batch = eval_sp_size
+            batch_X = X
+            batch_mask = mask
+            batch_chain_M = chain_M
+            batch_residue_idx = residue_idx
+            batch_chain_encoding_all = chain_encoding_all
+
+        rates = 0
+        oversample = 0
+        aatypes_0 = _masked_categorical(num_batch, num_res, self._device).long()
+        # logs_traj = defaultdict(list)
+        # Set-up time
+        # if num_timesteps is None:
+        num_timesteps = self._cfg.num_timesteps
+        ts = torch.linspace(self._cfg.min_t, 1.0, num_timesteps)
+        t_1 = ts[0]
+        aatypes_t_1 = aatypes_0  # [bsz, seqlen]
+        prot_traj = [aatypes_0.detach().cpu()]
+        clean_traj = []
+        #check if aatypes_t_1 size(0) is the same as num_batch
+        assert aatypes_t_1.size(0) == num_batch
+        if drop_schudule == 'exponential':
+            num_samples_schedule = [
+                max(eval_sp_size, int(batch_size_per_gpu * (eval_sp_size / batch_size_per_gpu) ** (t / (len(ts)-1)))) for
+                t in
+                range((len(ts)-1))]
+        elif drop_schudule == 'quadratic':
+            num_samples_schedule = [
+                max(eval_sp_size, int(eval_sp_size + (batch_size_per_gpu - eval_sp_size) * (1 - t / (len(ts)-1)) ** 2))
+                for t in
+                range((len(ts)-1))]
+        elif drop_schudule == 'linear':
+            num_samples_schedule = [
+                max(eval_sp_size, int(batch_size_per_gpu - t * (batch_size_per_gpu - eval_sp_size) / (len(ts)-1))) for t
+                in
+                range((len(ts)-1))]
+        elif drop_schudule == 'sigmoid':
+            k = 10  # Adjust steepness
+            num_samples_schedule = [
+                max(eval_sp_size, int(batch_size_per_gpu / (1 + np.exp(-k * (t / (len(ts)-1) - 0.5)))))
+                for t in range((len(ts)-1))].reverse()
+        else:
+            num_samples_schedule = [eval_sp_size] * (len(ts)-1)
+
+        start_res = (len(ts)-1)%depth
+        if start_res > 0:
+            for d in range(1, start_res+1):
+                t_2 = ts[d]
+                d_t = t_2 - t_1
+                oversample += num_batch
+                with torch.no_grad():
+                    # model_out = model(batch)
+                    model_out = model(batch_X, aatypes_t_1, batch_mask, batch_chain_M, batch_residue_idx, batch_chain_encoding_all)
+
+                pred_logits_1 = model_out  # [bsz, seqlen, 22]
+                pred_logits_wo_mask = pred_logits_1.clone()
+                pred_logits_wo_mask[:, :, mu.MASK_TOKEN_INDEX] = -1e9
+                pred_aatypes_1 = torch.argmax(pred_logits_wo_mask, dim=-1)
+                # pred_aatypes_1 = torch.argmax(pred_logits_1, dim=-1)
+                clean_traj.append(pred_aatypes_1.detach().cpu())
+
+                if self._cfg.do_purity:
+                    aatypes_t_2 = self._aatypes_euler_step_purity(d_t, t_1, pred_logits_1, aatypes_t_1)
+                else:
+                    # aatypes_t_2 = self._aatypes_euler_step(d_t, t_1, pred_logits_1, aatypes_t_1)
+
+                    # change it to the sampling as in the gosai dataset
+                    pred_logits_1[:, :, mu.MASK_TOKEN_INDEX] = self.neg_infinity
+                    pred_logits_1 = pred_logits_1 / self._cfg.temp - torch.logsumexp(pred_logits_1 / self._cfg.temp,
+                                                                                     dim=-1, keepdim=True)
+
+                    # For the logits of the unmasked tokens, set all values
+                    # to -infinity except for the indices corresponding to
+                    # the unmasked tokens.
+                    unmasked_indices = (aatypes_t_1 != mu.MASK_TOKEN_INDEX)
+                    pred_logits_1[unmasked_indices] = self.neg_infinity
+                    pred_logits_1[unmasked_indices, aatypes_t_1[unmasked_indices]] = 0
+
+                    move_chance_t = 1.0 - t_1
+                    move_chance_s = 1.0 - t_2
+                    q_xs = pred_logits_1.exp() * d_t
+
+                    q_xs[:, :, mu.MASK_TOKEN_INDEX] = move_chance_s  # [:, :, 0]
+                    # _x = torch.multinomial(q_xs.view(-1, q_xs.shape[-1]), num_samples=1).view(num_batch, num_res)
+
+                    copy_flag = (aatypes_t_1 != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
+                    categorical_list = [_sample_categorical(q_xs) for iii in range(repeats)]
+                    aatypes_t_2_list = [aatypes_t_1 * copy_flag + categorical_list[iii] * (1 - copy_flag) for iii in
+                                        range(repeats)]
+                    # Clean sample (Just used for the last step)
+                    clean_aatypes_t_1 = aatypes_t_1 * copy_flag + pred_aatypes_1 * (1 - copy_flag)
+
+                    scores = []
+                    improve_hot_x0_list = []
+                    for i in range(repeats):
+                        copy_flag_pes = (aatypes_t_2_list[i] != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
+                        expected_x0_pes = model(batch_X, aatypes_t_2_list[i], batch_mask, batch_chain_M, batch_residue_idx,
+                                                batch_chain_encoding_all)  # Calcualte E[x_0|x_{t-1}]
+                        one_hot_x0 = torch.argmax(expected_x0_pes, dim=2)
+                        improve_hot_x0 = copy_flag_pes * aatypes_t_2_list[i] + (1 - copy_flag_pes) * one_hot_x0
+                        improve_hot_x0_list.append(improve_hot_x0)
+
+                    improve_hot_x0 = torch.cat(improve_hot_x0_list)
+
+                    if reward_name == 'stability':
+                        reward_list = []
+                        for seq in improve_hot_x0_list:
+                            reward_list.append(
+                                reward_model(X, 1.0 * F.one_hot(seq, num_classes=22), mask, chain_M, residue_idx,
+                                             chain_encoding_all))
+                        reward = torch.cat(reward_list)
+                    elif reward_name == "LDDT":
+                        reward = reward_model.cal_reward(improve_hot_x0)
+                    elif reward_name == 'scRMSD':
+                        reward = reward_model.cal_rmsd_reward(improve_hot_x0)
+                        reward = np.array(reward)
+                        reward = -torch.from_numpy(reward).to(self._device)
+                    elif reward_name == 'stability_rosetta':
+                        reward = reward_model.calculate_energy(improve_hot_x0)
+                        reward = np.array(reward)
+                        reward = -torch.from_numpy(reward).to(self._device)
+
+                    scores = torch.reshape(reward, (repeats, int(len(reward) / repeats)))
+                    final_sample_indices = torch.argmax(scores, dim=0).squeeze()  # Indices, Shape [batch_size]
+                    final_samples = [aatypes_t_2_list[final_sample_indices[j]][j, :] for j in
+                                     range(aatypes_t_1.size(0))]  # Select the chosen samples using gathered indices
+                    aatypes_t_2 = torch.stack(final_samples, dim=0)
+
+                aatypes_t_1 = aatypes_t_2.long()
+                prot_traj.append(aatypes_t_2.cpu().detach())
+
+                t_1 = t_2
+
+        # for t_2 in tqdm(ts[1:]):
+        for major_t_idx in tqdm(range(start_res+1, len(ts), depth)):
+            if search_schudule == 'all':
+                search_probability = 1.1
+            elif search_schudule == 'linear':
+                search_probability = (major_t_idx + 10) / int((len(ts)-1) ) # linear growth, bigger hyperparameter --> likely to search more
+            elif search_schudule == 'exponential':
+                search_probability = 1 - np.exp(-major_t_idx / (int((len(ts)-1) ) / 4))  # Exponential growth, bigger hyperparameter --> likely to search more
+            else:
+                raise ValueError(f"Invalid search_schudule: {search_schudule}")
+            if np.random.rand() < search_probability:
+                # Initialize BFS
+                current_scores = torch.zeros(num_batch, device=self._device)
+                sample_indices = torch.arange(num_batch, device=self._device)
+                curr_X = batch_X.clone()
+                curr_mask = batch_mask.clone()
+                curr_chain_M = batch_chain_M.clone()
+                curr_residue_idx = batch_residue_idx.clone()
+                curr_chain_encoding_all = batch_chain_encoding_all.clone()
+                drop_to = num_samples_schedule[major_t_idx+depth-2]
+                rates += 1
+                oversample += num_batch * depth
+                for d in range(depth):  # Tree depth
+                    expanded_scores = []
+                    expanded_indices = []
+
+                    t_2 = ts[major_t_idx + d]  # Calculate the intermediate `t_2`
+                    d_t = t_2 - t_1
+                    with torch.no_grad():
+                        # model_out = model(batch)
+                        model_out = model(curr_X, aatypes_t_1, curr_mask, curr_chain_M, curr_residue_idx, curr_chain_encoding_all)
+
+                    pred_logits_1 = model_out  # [bsz, seqlen, 22]
+                    pred_logits_wo_mask = pred_logits_1.clone()
+                    pred_logits_wo_mask[:, :, mu.MASK_TOKEN_INDEX] = -1e9
+                    pred_aatypes_1 = torch.argmax(pred_logits_wo_mask, dim=-1)
+                    # clean_traj.append(pred_aatypes_1.detach().cpu())
+
+                    if self._cfg.do_purity:
+                        aatypes_t_2 = self._aatypes_euler_step_purity(d_t, t_1, pred_logits_1, aatypes_t_1)
+                    else:
+                        # aatypes_t_2 = self._aatypes_euler_step(d_t, t_1, pred_logits_1, aatypes_t_1)
+                        # change it to the sampling as in the gosai dataset
+                        pred_logits_1[:, :, mu.MASK_TOKEN_INDEX] = self.neg_infinity
+                        pred_logits_1 = pred_logits_1 / self._cfg.temp - torch.logsumexp(pred_logits_1 / self._cfg.temp,
+                                                                                         dim=-1, keepdim=True)
+                        # For the logits of the unmasked tokens, set all values to -infinity except for the indices corresponding to the unmasked tokens.
+                        unmasked_indices = (aatypes_t_1 != mu.MASK_TOKEN_INDEX)
+                        pred_logits_1[unmasked_indices] = self.neg_infinity
+                        pred_logits_1[unmasked_indices, aatypes_t_1[unmasked_indices]] = 0
+                        # move_chance_t = 1.0 - t_1
+                        move_chance_s = 1.0 - t_2
+                        q_xs = pred_logits_1.exp() * d_t
+
+                        q_xs[:, :, mu.MASK_TOKEN_INDEX] = move_chance_s  # [:, :, 0]
+                        # _x = torch.multinomial(q_xs.view(-1, q_xs.shape[-1]), num_samples=1).view(num_batch, num_res)
+
+                        copy_flag = (aatypes_t_1 != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
+                        categorical_list = [_sample_categorical(q_xs) for iii in range(repeats)]
+                        aatypes_t_2_list = [aatypes_t_1 * copy_flag + categorical_list[iii] * (1 - copy_flag) for iii in
+                                            range(repeats)]
+                        # Clean sample (Just used for the last step)
+                        clean_aatypes_t_1 = aatypes_t_1 * copy_flag + pred_aatypes_1 * (1 - copy_flag)
+                        if d == depth - 1:
+                            # Select the best states
+                            final_scores = torch.full((num_batch,), float('-inf'), device=self._device)
+                            final_pred_aatypes_1 = [None] * num_batch
+
+                            for i in range(num_batch):
+                                sample_mask = (sample_indices == i)
+                                best_score = current_scores[sample_mask].max()
+                                if best_score > final_scores[i]:
+                                    final_scores[i] = best_score
+                                    final_pred_aatypes_1[i] = clean_aatypes_t_1[sample_mask][
+                                        torch.argmax(current_scores[sample_mask])]
+
+                            final_pred_aatypes_1 = torch.stack(final_pred_aatypes_1, dim=0)
+                            clean_aatypes_t_1 = final_pred_aatypes_1
+                            clean_traj.append(clean_aatypes_t_1.detach().cpu())
+
+                        scores = []
+                        improve_hot_x0_list = []
+                        for i in range(repeats):
+                            copy_flag_pes = (aatypes_t_2_list[i] != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
+                            expected_x0_pes = model(curr_X, aatypes_t_2_list[i], curr_mask, curr_chain_M, curr_residue_idx,
+                                                    curr_chain_encoding_all)  # Calcualte E[x_0|x_{t-1}]
+                            one_hot_x0 = torch.argmax(expected_x0_pes, dim=2)
+                            improve_hot_x0 = copy_flag_pes * aatypes_t_2_list[i] + (1 - copy_flag_pes) * one_hot_x0
+                            improve_hot_x0_list.append(improve_hot_x0)
+                            expanded_scores.append(current_scores.clone())
+                            expanded_indices.append(sample_indices.clone())
+
+                        improve_hot_x0 = torch.cat(improve_hot_x0_list)
+                        current_scores = torch.cat(expanded_scores)
+                        sample_indices = torch.cat(expanded_indices)
+                        curr_X = torch.cat([curr_X for iii in range(repeats)], dim=0)
+                        curr_mask = torch.cat([curr_mask for iii in range(repeats)], dim=0)
+                        curr_chain_M = torch.cat([curr_chain_M for iii in range(repeats)], dim=0)
+                        curr_residue_idx = torch.cat([curr_residue_idx for iii in range(repeats)], dim=0)
+                        curr_chain_encoding_all = torch.cat([curr_chain_encoding_all for iii in range(repeats)], dim=0)
+
+                        if reward_name == 'stability':
+                            reward_list = []
+                            for seq in improve_hot_x0_list:
+                                reward_list.append(
+                                    reward_model(X, 1.0 * F.one_hot(seq, num_classes=22), mask, chain_M, residue_idx,
+                                                 chain_encoding_all))
+                            reward = torch.cat(reward_list)
+                        elif reward_name == "LDDT":
+                            reward = reward_model.cal_reward(improve_hot_x0)
+                        elif reward_name == 'scRMSD':
+                            reward = reward_model.cal_rmsd_reward(improve_hot_x0)
+                            reward = np.array(reward)
+                            reward = -torch.from_numpy(reward).to(self._device)
+                        elif reward_name == 'stability_rosetta':
+                            reward = reward_model.calculate_energy(improve_hot_x0)
+                            reward = np.array(reward)
+                            reward = -torch.from_numpy(reward).to(self._device)
+
+                        # scores = torch.reshape(reward, (repeats, int(len(reward) / repeats)))
+                        # final_sample_indices = torch.argmax(scores, dim=0).squeeze()  # Indices, Shape [batch_size]
+                        # final_samples = [aatypes_t_2_list[final_sample_indices[j]][j, :] for j in
+                        #                  range(aatypes_t_1.size(0))]  # Select the chosen samples using gathered indices
+                        # aatypes_t_2 = torch.stack(final_samples, dim=0)
+                        aatypes_t_2 = torch.cat(aatypes_t_2_list)
+                        current_scores += reward.squeeze()
+                    aatypes_t_1 = aatypes_t_2.long()
+                    # prot_traj.append(aatypes_t_2.cpu().detach())
+                    t_1 = t_2
+
+                # Select the best states
+                final_scores = torch.full((num_batch,), float('-inf'), device=self._device)
+                final_states = [None] * num_batch
+
+                for i in range(num_batch):
+                    sample_mask = (sample_indices == i)
+                    best_score = current_scores[sample_mask].max()
+                    if best_score > final_scores[i]:
+                        final_scores[i] = best_score
+                        final_states[i] = aatypes_t_1[sample_mask][torch.argmax(current_scores[sample_mask])]
+
+                # Drop to the required batch size
+                final_states = torch.stack(final_states, dim=0)
+                if final_states.size(0) > drop_to:
+                    top_indices = torch.argsort(final_scores, descending=True)[:drop_to]
+                    final_states = final_states[top_indices]
+                    num_batch = drop_to
+                    batch_X = batch_X[:num_batch]
+                    batch_mask = batch_mask[:num_batch]
+                    batch_chain_M = batch_chain_M[:num_batch]
+                    batch_residue_idx = batch_residue_idx[:num_batch]
+                    batch_chain_encoding_all = batch_chain_encoding_all[:num_batch]
+
+                aatypes_t_1 = final_states
+                prot_traj.append(aatypes_t_1.detach().cpu())
+            else:
+                for j in range(depth):
+                    drop_to = num_samples_schedule[major_t_idx + j - 1]
+                    oversample += num_batch
+                    t_2 = ts[major_t_idx + j]
+                    d_t = t_2 - t_1
+                    with torch.no_grad():
+                        # model_out = model(batch)
+                        model_out = model(batch_X, aatypes_t_1, batch_mask, batch_chain_M, batch_residue_idx, batch_chain_encoding_all)
+
+                    pred_logits_1 = model_out  # [bsz, seqlen, 22]
+                    pred_logits_wo_mask = pred_logits_1.clone()
+                    pred_logits_wo_mask[:, :, mu.MASK_TOKEN_INDEX] = -1e9
+                    pred_aatypes_1 = torch.argmax(pred_logits_wo_mask, dim=-1)
+                    # pred_aatypes_1 = torch.argmax(pred_logits_1, dim=-1)
+                    clean_traj.append(pred_aatypes_1.detach().cpu())
+
+                    if self._cfg.do_purity:
+                        aatypes_t_2 = self._aatypes_euler_step_purity(d_t, t_1, pred_logits_1, aatypes_t_1)
+                    else:
+                        # aatypes_t_2 = self._aatypes_euler_step(d_t, t_1, pred_logits_1, aatypes_t_1)
+
+                        # change it to the sampling as in the gosai dataset
+                        pred_logits_1[:, :, mu.MASK_TOKEN_INDEX] = self.neg_infinity
+                        pred_logits_1 = pred_logits_1 / self._cfg.temp - torch.logsumexp(pred_logits_1 / self._cfg.temp,
+                                                                                         dim=-1, keepdim=True)
+
+                        # For the logits of the unmasked tokens, set all values
+                        # to -infinity except for the indices corresponding to
+                        # the unmasked tokens.
+                        unmasked_indices = (aatypes_t_1 != mu.MASK_TOKEN_INDEX)
+                        pred_logits_1[unmasked_indices] = self.neg_infinity
+                        pred_logits_1[unmasked_indices, aatypes_t_1[unmasked_indices]] = 0
+
+                        move_chance_t = 1.0 - t_1
+                        move_chance_s = 1.0 - t_2
+                        q_xs = pred_logits_1.exp() * d_t
+
+                        q_xs[:, :, mu.MASK_TOKEN_INDEX] = move_chance_s  # [:, :, 0]
+                        # _x = torch.multinomial(q_xs.view(-1, q_xs.shape[-1]), num_samples=1).view(num_batch, num_res)
+
+                        copy_flag = (aatypes_t_1 != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
+                        categorical_list = [_sample_categorical(q_xs) for iii in range(repeats)]
+                        aatypes_t_2_list = [aatypes_t_1 * copy_flag + categorical_list[iii] * (1 - copy_flag) for iii in
+                                            range(repeats)]
+                        # Clean sample (Just used for the last step)
+                        clean_aatypes_t_1 = aatypes_t_1 * copy_flag + pred_aatypes_1 * (1 - copy_flag)
+
+                        scores = []
+                        improve_hot_x0_list = []
+                        for i in range(repeats):
+                            copy_flag_pes = (aatypes_t_2_list[i] != mu.MASK_TOKEN_INDEX).to(aatypes_t_1.dtype)
+                            expected_x0_pes = model(batch_X, aatypes_t_2_list[i], batch_mask, batch_chain_M, batch_residue_idx,
+                                                    batch_chain_encoding_all)  # Calcualte E[x_0|x_{t-1}]
+                            one_hot_x0 = torch.argmax(expected_x0_pes, dim=2)
+                            improve_hot_x0 = copy_flag_pes * aatypes_t_2_list[i] + (1 - copy_flag_pes) * one_hot_x0
+                            improve_hot_x0_list.append(improve_hot_x0)
+
+                        improve_hot_x0 = torch.cat(improve_hot_x0_list)
+
+                        if reward_name == 'stability':
+                            reward_list = []
+                            for seq in improve_hot_x0_list:
+                                reward_list.append(
+                                    reward_model(X, 1.0 * F.one_hot(seq, num_classes=22), mask, chain_M, residue_idx,
+                                                 chain_encoding_all))
+                            reward = torch.cat(reward_list)
+                        elif reward_name == "LDDT":
+                            reward = reward_model.cal_reward(improve_hot_x0)
+                        elif reward_name == 'scRMSD':
+                            reward = reward_model.cal_rmsd_reward(improve_hot_x0)
+                            reward = np.array(reward)
+                            reward = -torch.from_numpy(reward).to(self._device)
+                        elif reward_name == 'stability_rosetta':
+                            reward = reward_model.calculate_energy(improve_hot_x0)
+                            reward = np.array(reward)
+                            reward = -torch.from_numpy(reward).to(self._device)
+
+                        scores = torch.reshape(reward, (repeats, int(len(reward) / repeats)))
+                        final_sample_indices = torch.argmax(scores, dim=0).squeeze()  # Indices, Shape [batch_size]
+                        final_samples = [aatypes_t_2_list[final_sample_indices[j]][j, :] for j in
+                                         range(aatypes_t_1.size(0))]  # Select the chosen samples using gathered indices
+                        final_samples = torch.stack(final_samples, dim=0)
+
+                    if final_samples.size(0) > drop_to:
+                        final_scores = torch.stack([scores[final_sample_indices[j], j] for j in range(final_samples.size(0))], dim=0).squeeze()
+                        top_indices = torch.argsort(final_scores, descending=True)[:drop_to]
+                        final_samples = final_samples[top_indices]
+                        num_batch = drop_to
+                        batch_X = batch_X[:num_batch]
+                        batch_mask = batch_mask[:num_batch]
+                        batch_chain_M = batch_chain_M[:num_batch]
+                        batch_residue_idx = batch_residue_idx[:num_batch]
+                        batch_chain_encoding_all = batch_chain_encoding_all[:num_batch]
+                    aatypes_t_2 = final_samples
+                    aatypes_t_1 = aatypes_t_2.long()
+                    prot_traj.append(aatypes_t_2.cpu().detach())
+
+                    t_1 = t_2
+        # We only integrated to min_t, so need to make a final step
+        t_1 = ts[-1]
+        print(torch.mean(final_scores))
+        search_rate = rates *depth / int((len(ts)-1))
+        oversample_rate = oversample / (eval_sp_size * int((len(ts)-1)))
+        print(f'search rate: {search_rate}, oversample rate: {oversample_rate}')
+        perc = [repeats**(i+1) for i in range(depth)]
+        print(f'rate over svdd: {int((search_rate*sum(perc)/(repeats*depth)+1-search_rate)*oversample_rate)}')
+        return clean_aatypes_t_1, prot_traj, clean_traj
+
     def sample_controlled_NestedIS(
             self,
             model,
