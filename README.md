@@ -8,7 +8,11 @@ We employ an inverse folding model (mapping backbone structure to sequence) base
 Go to `./fmif` folder. Then, the inference-time technique can be run as follows.  
 
 ```bash 
-CUDA_VISIBLE_DEVICES=5 python eval_finetune.py --decoding 'SVDD' --reward_name 'LDDT'  --repeatnum 20 --batchsize 5
+CUDA_VISIBLE_DEVICES=7 python eval_finetune.py --decoding 'SVDD' --reward_name 'LDDT'  --repeatnum 10 --batchsize 5
+```
+
+``` 
+CUDA_VISIBLE_DEVICES=5 python eval_finetune.py --decoding 'DDBFS' --reward_name 'LDDT'  --repeatnum 5 --batchsize 5 --wandb_name w5d3-expo-expo2
 ```
 
 * **--decoding**: 

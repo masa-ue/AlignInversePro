@@ -10,6 +10,7 @@ import pickle
 import wandb
 import sys
 sys.path.append('~/private/seqft/multiflow')
+sys.path.append('../')
 # print(sys.path)
 from protein_oracle.utils import str2bool
 import warnings
@@ -154,6 +155,9 @@ argparser.add_argument("--mixed_precision", type=str2bool, default=True, help="t
 # argparser.add_argument("--initialize_with_pretrain", type=str2bool, default=False, help="initialize with FMIF weights")
 argparser.add_argument("--train_using_diff", type=str2bool, default=False, help="training using difference in dG")
 argparser.add_argument("--predict_ddg", type=str2bool, default=True, help="model directly predicts ddG")
+argparser.add_argument("--search_schedule", type=str, default="all", help="exponential, linear, or all")
+argparser.add_argument("--drop_schedule", type=str, default="", help="exponential, linear...")
+argparser.add_argument("--drop_oversample_rate", type=int, default=2)
 # TODO
 argparser.add_argument("--wandb_name", type=str, default="debug", help="wandb run name")
 argparser.add_argument("--lr", type=float, default=1e-4)
@@ -183,6 +187,7 @@ argparser.add_argument("--dps_scale", type=float, default=0.0)
 argparser.add_argument("--tds_alpha", type=float, default=0.0)
 argparser.add_argument("--batchsize", type=int, default=5)
 argparser.add_argument("--repeatnum", type=int, default=5)
+argparser.add_argument("--depth", type=int, default=3)
 
 args = argparser.parse_args()
 pdb_path = '../datasets/AlphaFold_model_PDBs'
@@ -343,6 +348,9 @@ for testing_model in model_to_test_list:
         elif args.decoding == 'SVDD': 
              S_sp, _, _ = noise_interpolant.sample_controlled_SVDD(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
                 reward_model=new_reward_model, reward_name = args.reward_name, repeats = repeat_num )
+        elif args.decoding == 'DDBFS':
+             S_sp, _, _ = noise_interpolant.sample_controlled_SVDD_BFS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                reward_model=new_reward_model, reward_name=args.reward_name, repeats=repeat_num, depth=args.depth, search_schudule=args.search_schedule, drop_schudule=args.drop_schedule, oversamplerate=args.drop_oversample_rate)
         elif args.decoding == 'NestedIS': 
             S_sp, _, _ = noise_interpolant.sample_controlled_NestedIS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
                 reward_model= new_reward_model, reward_name = args.reward_name )     
@@ -394,10 +402,21 @@ for testing_model in model_to_test_list:
         print("scRMSD", np.mean(np.array(pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])))
         print("recovery", np.mean(recovery_r.detach().cpu().numpy()))
 
-        # Save Data 
+        # Save Data
+        folder_path = f"log/{args.wandb_name}"
+        os.makedirs(folder_path, exist_ok=True)
+        print(f"save to {folder_path}")
         df = pd.concat(gen_true_mpnn_results_list)
-        df.to_csv("log/reward_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".csv", index=False)
-        np.savez("log/reward_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = final_reward) # Save "rewards" for generated samples 
-        np.savez("log/recovery_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = recovery_r.cpu().data.numpy()) # Save "recovery rates" for generated samples 
-        np.savez("log/scRMSD_"+ args.decoding  + "_"+ args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])  # Save "scRMSDs" for generated samples 
+        # df.to_csv("log/"+args.wandb_name+"_reward_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".csv", index=False)
+        # np.savez("log/"+args.wandb_name+"_reward_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = final_reward) # Save "rewards" for generated samples
+        # np.savez("log/"+args.wandb_name+"_recovery_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = recovery_r.cpu().data.numpy()) # Save "recovery rates" for generated samples
+        # np.savez("log/"+args.wandb_name+"_scRMSD_"+ args.decoding  + "_"+ args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])  # Save "scRMSDs" for generated samples
+        df.to_csv(os.path.join(folder_path, "reward_" + args.decoding + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".csv"), index=False)
+        np.savez(os.path.join(folder_path, "reward_" + args.decoding + "_" + args.reward_name + "_" +
+                 batch['protein_name'][0][:-4] + ".npz"), reward=final_reward)  # Save "rewards" for generated samples
+        np.savez(os.path.join(folder_path, "recovery_" + args.decoding + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz"), reward=recovery_r.cpu().data.numpy())
+        np.savez(os.path.join(folder_path, "scRMSD_" + args.decoding + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz"), reward=pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])
 
+        args_dict = vars(args)
+        with open(os.path.join(folder_path, "args.json"), "w") as f:
+            json.dump(args_dict, f, indent=4)
