@@ -804,11 +804,11 @@ class Interpolant:
             self,
             model,
             X, mask, chain_M, residue_idx, chain_encoding_all,
-            reward_model, reward_name, repeats=3, depth=3, search_schudule='all', drop_schudule=None, oversamplerate=2
+            reward_model, reward_name, repeats=3, depth=3, search_schudule='all', drop_schudule="", oversamplerate=2
     ):
 
         eval_sp_size, num_res = mask.shape
-        if drop_schudule is not None:
+        if len(drop_schudule) > 0:
             batch_size_per_gpu = eval_sp_size * oversamplerate  # oversample
             num_batch = batch_size_per_gpu
             uni_X = X[0]
