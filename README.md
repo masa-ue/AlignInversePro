@@ -1,6 +1,6 @@
 # Tutorial: Inference-Time Alignment in Discrete Diffusion Models for Protein Design 
 
-This code is provided alongside the tutorial paper on inference-time alignment in diffusion models. The objective is to optimize multiple reward functions within a protein inverse folding model ($p(x|c)$), where $x$ represents a sequence, and $c$ denotes a backbone structure.
+This code is provided alongside the tutorial paper on inference-time alignment in diffusion models. The objective is to optimize multiple reward functions within a protein inverse folding model (p(x|c)), where $x$ represents a sequence, and $c$ denotes a backbone structure.
 
 We employ an inverse folding model (mapping backbone structure to sequence) based on a discrete diffusion model as the foundational model. In this repository, we detail the process of optimizing various downstream reward functions in this diffusion model using inference-time techniques.
 
@@ -49,6 +49,6 @@ Then, the dataset will be placed on the folder `./datasets`
 
 If you use this codebase, then please cite
 ```
-XXX
+
 ```
 
