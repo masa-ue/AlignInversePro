@@ -159,7 +159,7 @@ argparser.add_argument("--search_schedule", type=str, default="all", help="expon
 argparser.add_argument("--drop_schedule", type=str, default="", help="exponential, linear...")
 argparser.add_argument("--drop_oversample_rate", type=int, default=2)
 # TODO
-argparser.add_argument("--wandb_name", type=str, default="debug", help="wandb run name")
+argparser.add_argument("--wandb_name", type=str, default="debug", help="folder name for saving the results")
 argparser.add_argument("--lr", type=float, default=1e-4)
 argparser.add_argument("--wd", type=float, default=1e-4)
 
@@ -301,6 +301,8 @@ save_path = os.path.join(args.path_for_outputs, 'eval')
 
 # result save path
 folder_path = f"log/{args.wandb_name}"
+if os.path.exists(folder_path):
+    warnings.warn(f"Result folder already exists: {folder_path}", RuntimeWarning)
 os.makedirs(folder_path, exist_ok=True)
 args_dict = vars(args)
 with open(os.path.join(folder_path, "args.json"), "w") as f:
