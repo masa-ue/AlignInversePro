@@ -1625,5 +1625,5 @@ def set_diversity(sequences, masks):
             if i != j:
                 diversity_matrix[i, j] = pair_diversity(sequences[i], sequences[j], masks[i], masks[j])
     overall_diversity = np.sum(diversity_matrix) / (m ** 2)
-    return overall_diversity
+    return overall_diversity.item()
 
