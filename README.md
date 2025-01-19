@@ -8,12 +8,14 @@ We employ an inverse folding model (mapping backbone structure to sequence) base
 Go to `./fmif` folder. Then, the inference-time technique can be run as follows.  
 
 ```bash 
-CUDA_VISIBLE_DEVICES=7 python eval_finetune.py --decoding 'SVDD' --reward_name 'LDDT'  --repeatnum 10 --batchsize 5
+CUDA_VISIBLE_DEVICES=1 python eval_finetune.py --decoding 'SVDD' --reward_name 'LDDT'  --repeatnum 10 --batchsize 5
 ```
 
+<!---
 ``` 
 CUDA_VISIBLE_DEVICES=5 python eval_finetune.py --decoding 'DDBFS' --reward_name 'LDDT'  --repeatnum 5 --batchsize 5 --wandb_name w5d3-expo-expo2
 ```
+-->
 
 * **--decoding**: 
   * **SMC**: Refer to Sec. 3.1 or papers . 
@@ -22,22 +24,32 @@ CUDA_VISIBLE_DEVICES=5 python eval_finetune.py --decoding 'DDBFS' --reward_name 
   * **Classifier guidance**: Refer to Sec. 5.2  or the paper such as  
 * **--rewards**:  
   * **stability**: This is a reward function trained in [Wang and Uehara et al., 2024](https://arxiv.org/abs/2410.13643), which predicts Gibbs’s free energy from a sequence and a structure on the [Megalscale dataset](https://www.nature.com/articles/s41586-023-06328-6). For details, refer to the [code](https://github.com/ChenyuWang-Monica/DRAKES).  
-  * **LDDT**: Common metric to characterize the confidecen of prediction. It has been used as a certain proxy of stability. 
+  * **pLDDT**: A common metric to characterize the confidence of prediction. It has been used as a specific proxy of stability. 
   * **scRMSD**: $\|c- f(\hat x) \|$ where $f$ is a forward folding model ([ESMfold](https://github.com/facebookresearch/esm)). While the pre-trained model is already a conditoinal diffusoin model, this is considered to be usesful to robustify the generated protein further. 
-*  **--repeat_num**: When using SMC, SVDD, Nested IS, we need to choose the dupilicatoin hyperparaeter.
+  * .... (Will be added more)
+*  **--repeat_num**: When using SMC, SVDD, and Nested IS, we need to choose the duplication hyperparameter.
 * **--batchsize**: Batch size  
-* **--alpha**: We set this as $0.5$ in SMC and classfier guidance by default. For SVDD, we choose $0.0$ by default. 
+* **--alpha**: We set this as $0.5$ in SMC and classifier guidance by default. For SVDD, we choose $0.0$ by default. 
+ 
 
 
 ## Outputs  
 
-We condition on several wild backbone strucres in vadliation protein datasets. We save each generated protein as a pdb fild in the folder `./sc_tmp/`. We also record several important statistics as a pandas format in the folder `./log`. 
+We condition several wild backbone structures in validation protein datasets. We save each generated protein as a pdb file in the folder `./sc_tmp/`. We also record several important statistics in a pandas format in the folder `./log`. 
+
 
 ## Results 
 
-Each blue point correponds to the median RMSD of generated samples for each backbone structure. For example, when optimizng scRMSD, for some protein, while naive inference procedures have certian incosisntecy, inference-time technique can make the generated result very consistent with the forward folding model.  
+Each blue point corresponds to the median RMSD of generated samples for each backbone structure. For example, when optimizing scRMSD, for some proteins, while naive inference procedures have certain inconsistency, the inference-time technique can make the generated result very consistent with the forward folding model.  
 
 ![image](./media/media.jpeg)
+
+
+## Inference-Time Scaling Law 
+
+The performance improves as the computational budget increases. The following illustrates a case where the beam width increases when runinng value-based beam search (SVDD). While this increases computational time, it leads to a significant improvement in performance.
+
+
 
 ## Installation 
 
@@ -48,11 +60,17 @@ python download_model_data.py
 ```
 Then, the dataset will be placed on the folder `./datasets`
 * To calculate the energy, we need to install [Pyrosseta](https://www.pyrosetta.org/). 
-
+* Note that our code also builts on ESMFold, OpenFold and ProteinMPNN. 
 ## Citation 
 
 If you use this codebase, then please cite
 ```
-
+@misc{uehara2025rewardguidedcontrolledgenerationinferencetime,
+      title={Reward-Guided Controlled Generation for Inference-Time Alignment in Diffusion Models: Tutorial and Review}, 
+      author={Masatoshi Uehara and Yulai Zhao and Chenyu Wang and Xiner Li and Aviv Regev and Sergey Levine and Tommaso Biancalani},
+      year={2025},
+      eprint={2501.09685},
+      url={https://arxiv.org/abs/2501.09685}, 
+}
 ```
 

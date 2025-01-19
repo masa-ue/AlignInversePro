@@ -411,11 +411,11 @@ for testing_model in model_to_test_list:
         # np.savez("log/"+args.wandb_name+"_reward_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = final_reward) # Save "rewards" for generated samples
         # np.savez("log/"+args.wandb_name+"_recovery_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = recovery_r.cpu().data.numpy()) # Save "recovery rates" for generated samples
         # np.savez("log/"+args.wandb_name+"_scRMSD_"+ args.decoding  + "_"+ args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])  # Save "scRMSDs" for generated samples
-        df.to_csv(os.path.join(folder_path, "reward_" + args.decoding + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".csv"), index=False)
-        np.savez(os.path.join(folder_path, "reward_" + args.decoding + "_" + args.reward_name + "_" +
+        df.to_csv(os.path.join(folder_path, "reward_" + args.decoding + "_" + str(repeat_num)+ "_" + args.reward_name + "_"  + batch['protein_name'][0][:-4] + ".csv"), index=False)
+        np.savez(os.path.join(folder_path, "reward_" + args.decoding + "_" +  str(repeat_num)+ "_" + args.reward_name + "_" +
                  batch['protein_name'][0][:-4] + ".npz"), reward=final_reward)  # Save "rewards" for generated samples
-        np.savez(os.path.join(folder_path, "recovery_" + args.decoding + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz"), reward=recovery_r.cpu().data.numpy())
-        np.savez(os.path.join(folder_path, "scRMSD_" + args.decoding + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz"), reward=pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])
+        np.savez(os.path.join(folder_path, "recovery_" + args.decoding + "_" +  str(repeat_num)+ "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz"), reward=recovery_r.cpu().data.numpy())
+        np.savez(os.path.join(folder_path, "scRMSD_" + args.decoding + "_" +  str(repeat_num)+ "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz"), reward=pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])
 
         args_dict = vars(args)
         with open(os.path.join(folder_path, "args.json"), "w") as f:
