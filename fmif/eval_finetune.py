@@ -411,8 +411,8 @@ for testing_model in model_to_test_list:
             eps=1e-5,
             mean_value=True
         )
-        model_logl_sum = model_logl_sum.detach().cpu().numpy().mean()
-        model_logl_mean = model_logl_mean.detach().cpu().numpy().mean()
+        model_logl_sum = model_logl_sum.detach().cpu().numpy().mean().item()
+        model_logl_mean = model_logl_mean.detach().cpu().numpy().mean().item()
         all_model_logl_sum.append(model_logl_sum)
         all_model_logl_mean.append(model_logl_mean)
 
