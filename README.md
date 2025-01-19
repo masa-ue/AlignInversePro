@@ -1,6 +1,8 @@
-# Tutorial: Inference-Time Alignment in Discrete Diffusion Models for Protein Design 
+# Tutorial: Inference-Time Alignment in Diffusion Models for Protein Design 
 
-This code is provided alongside the tutorial paper on inference-time alignment in diffusion models. The objective is to optimize multiple reward functions within a protein inverse folding model (p(x|c)), where $x$ represents a sequence, and $c$ denotes a backbone structure.
+This code is provided alongside the tutorial paper on inference-time alignment in diffusion models. The objective is to optimize multiple reward functions within a protein inverse folding model (p(x|c)), where $x$ represents a sequence, and $c$ denotes a backbone structure. For related refer to [small molecule](https://github.com/hyanan16/SVDD-molecule) or [images](https://github.com/masa-ue/SVDD-image). 
+
+![image](media/inference_time_fig.png)
 
 We employ an inverse folding model (mapping backbone structure to sequence) based on a discrete diffusion model as the foundational model. In this repository, we detail the process of optimizing various downstream reward functions in this diffusion model using inference-time techniques.
 
@@ -49,6 +51,7 @@ Each blue point corresponds to the median RMSD of generated samples for each bac
 
 The performance improves as the computational budget increases. The following illustrates a case where the beam width increases when runinng value-based beam search (SVDD). While this increases computational time, it leads to a significant improvement in performance.
 
+![image](./media/scaling.png)
 
 
 ## Installation 
@@ -60,7 +63,8 @@ python download_model_data.py
 ```
 Then, the dataset will be placed on the folder `./datasets`
 * To calculate the energy, we need to install [Pyrosseta](https://www.pyrosetta.org/). 
-* Note that our code also builts on ESMFold, OpenFold and ProteinMPNN. 
+* Note that our code also builts on ESMFold, OpenFold and ProteinMPNN.
+
 ## Citation 
 
 If you use this codebase, then please cite
