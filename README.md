@@ -63,7 +63,7 @@ python download_model_data.py
 ```
 Then, the dataset will be placed on the folder `./datasets`
 * To calculate the energy, we need to install [Pyrosseta](https://www.pyrosetta.org/). 
-* Note that our code also builts on ESMFold, OpenFold and ProteinMPNN.
+* Note that our code also builts on [ESMFold](https://github.com/facebookresearch/esm), [OpenFold](https://github.com/aqlaboratory/openfold) and [ProteinMPNN](https://github.com/dauparas/ProteinMPNN).
 
 ## Citation 
 
