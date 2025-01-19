@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 from io import StringIO
+import torch
 
 import pyrosetta
 from pyrosetta import rosetta
@@ -237,9 +238,29 @@ if __name__ == "__main__":
     template_atoms: AtomArray = pdb_file_to_atomarray(StringIO(pdb_value_str))
     sequence_length = len(sequence_from_atomarray(template_atoms))
 
-    random_seq = "".join([np.random.choice(RESIDUE_TYPES_WITHOUT_CYSTEINE) for _ in range(sequence_length)])
+    # random_seq = "".join([np.random.choice(RESIDUE_TYPES_WITHOUT_CYSTEINE) for _ in range(sequence_length)])
+
+    random_seq = [np.random.choice(RESIDUE_TYPES_WITHOUT_CYSTEINE) for _ in range(sequence_length)]
+    mask_indices = np.random.choice(sequence_length, size=5, replace=False)
+    for idx in mask_indices:
+        random_seq[idx] = "_"
+    random_seq = "".join(random_seq)
 
     # esmfold
+    # model, alphabet = esm2.esm.pretrained.esm2_t36_3B_UR50D()
+    # batch_converter = alphabet.get_batch_converter()
+    # model.eval()  # disables dropout for deterministic results
+    # # Prepare data (first 2 sequences from ESMStructuralSplitDataset superfamily / 4)
+    # data = [
+    #     ("protein1", "MKTVRQERLKSIVRILERSKEPVSGAQLAEELSVSRQVIVQDIAYLRSLGYNIVATPRGYVLAGG"),
+    #     ("protein2", "KALTARQQEVFDLIRDHISQTGMPPTRAEIAQRLGFRSPNAAEEHLKALARKGVIEIVSGASRGIRLLQEE"),
+    #     ("protein2 with mask", "KALTARQQEVFDLIRD<mask>ISQTGMPPTRAEIAQRLGFRSPNAAEEHLKALARKGVIEIVSGASRGIRLLQEE"),
+    #     ("protein3", "K A <mask> I S Q"),
+    # ]
+    # batch_labels, batch_strs, batch_tokens = batch_converter(data)
+    # # alphabet.mask_idx: 32
+    # # alphabet.padding_idx: 1. work well
+
     folding_model = esm2.esm.pretrained.esmfold_structure_module_only_3B().eval()
     output = folding_model.infer(random_seq)
     pdbs = folding_model.output_to_pdb(output)

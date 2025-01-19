@@ -1580,7 +1580,7 @@ def fm_model_step(model, noisy_batch):
 
     return pred_logits
 
-def get_likelihood(model, batch, num_steps, device, noise_interpolant, eps=1e-5):
+def get_likelihood(model, batch, num_steps, device, noise_interpolant, eps=1e-5, mean_value=False):
     X, S, mask, chain_M, residue_idx, chain_encoding_all = batch # featurize(batch, device)
     timesteps = torch.linspace(
       eps, 1-eps, num_steps + 1, device=device) # t=1 is clean data
@@ -1593,8 +1593,37 @@ def get_likelihood(model, batch, num_steps, device, noise_interpolant, eps=1e-5)
         mask_for_loss = mask*chain_M
     
         log_probs = fm_model_step(model, noisy_batch)
-        log_p_s0 = log_probs.gather(-1, S[..., None]).squeeze(-1)
-        log_p_s0 = (log_p_s0 * mask_for_loss).sum(dim=-1) * multiplier
+        log_p_s0 = log_probs.gather(-1, S[..., None]).squeeze(-1)  # select S position token
+        log_p_s0 = (log_p_s0 * mask_for_loss).sum(dim=-1) * multiplier  # sum on the dimension of sequence length
         log_p_at_time_list.append(log_p_s0)
     log_p_at_time = torch.stack(log_p_at_time_list, dim=0).sum(dim=0)
+    if mean_value:
+        log_p_at_time_mean = log_p_at_time / mask_for_loss.sum(dim=-1)
+        # take average nll loss on sequence length. still sum on timestep, because of the multiplier
+        return log_p_at_time, log_p_at_time_mean
     return log_p_at_time
+
+
+def pair_diversity(seq1, seq2, mask1, mask2):
+    n = len(seq1)
+    assert len(seq2) == n, "Sequences must be the same length"
+    assert len(mask1) == n and len(mask2) == n, "Masks must be the same length as sequences"
+    combined_mask = np.array(mask1) * np.array(mask2)
+    effective_positions = np.sum(combined_mask)
+    if effective_positions == 0:
+        return 0.0
+
+    differences = sum(1 for l in range(n) if combined_mask[l] == 1 and seq1[l] != seq2[l])
+    return differences / effective_positions
+
+
+def set_diversity(sequences, masks):
+    m = len(sequences)
+    diversity_matrix = np.zeros((m, m))
+    for i in range(m):
+        for j in range(m):
+            if i != j:
+                diversity_matrix[i, j] = pair_diversity(sequences[i], sequences[j], masks[i], masks[j])
+    overall_diversity = np.sum(diversity_matrix) / (m ** 2)
+    return overall_diversity
+

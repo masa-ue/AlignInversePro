@@ -42,7 +42,7 @@ from protein_oracle.utils import set_seed
 from protein_oracle.data_utils import ProteinStructureDataset, ProteinDPODataset, featurize
 from protein_oracle.model_utils import ProteinMPNNOracle, get_std_opt
 from fmif.model_utils import ProteinMPNNFMIF
-from fmif.fm_utils import Interpolant, get_likelihood
+from fmif.fm_utils import Interpolant, get_likelihood, set_diversity
 # import fmif.model_utils as mu
 # from fmif.utils import worker_init_fn, get_pdbs, loader_pdb, build_training_clusters, PDB_dataset, StructureDataset, StructureLoader, set_seed
 # from fmif.model_utils import featurize, loss_smoothed, loss_nll, get_std_opt, ProteinMPNNFMIF
@@ -190,6 +190,8 @@ argparser.add_argument("--repeatnum", type=int, default=5)
 argparser.add_argument("--depth", type=int, default=3)
 
 args = argparser.parse_args()
+set_seed(args.seed, torch.cuda.is_available())
+
 pdb_path = '../datasets/AlphaFold_model_PDBs'
 max_len = 75  # Define the maximum length of proteins
 dataset = ProteinStructureDataset(pdb_path, max_len) # max_len set to 75 (sequences range from 31 to 74)
@@ -297,6 +299,12 @@ folding_cfg = SimpleNamespace(**folding_cfg)
 the_folding_model = folding_model.FoldingModel(folding_cfg)
 save_path = os.path.join(args.path_for_outputs, 'eval')
 
+# result save path
+folder_path = f"log/{args.wandb_name}"
+os.makedirs(folder_path, exist_ok=True)
+args_dict = vars(args)
+with open(os.path.join(folder_path, "args.json"), "w") as f:
+    json.dump(args_dict, f, indent=4)
 
 model_to_test_list = [old_fmif_model]
 for testing_model in model_to_test_list:
@@ -309,12 +317,14 @@ for testing_model in model_to_test_list:
     gen_foldtrue_mpnn_results_merge = []
     gen_true_mpnn_results_merge = []
     foldtrue_true_mpnn_results_merge = []
-    all_model_logl = []
+    all_model_logl_sum, all_model_logl_mean = [], []
     rewards_eval = []
     rewards = []
 
-    for _step, batch in tqdm(enumerate(loader_train50)):
-
+    all_reward, all_scRMSD, all_recovery = [], [], []
+    all_diversity = []
+    all_result_dict = {}
+    for _step, batch in enumerate(tqdm(loader_train50)):
         # Load Data # 
         X, S, mask, chain_M, residue_idx, chain_encoding_all, S_wt = featurize(batch, device)
         X = X.repeat(batchsize, 1, 1, 1)
@@ -335,10 +345,10 @@ for testing_model in model_to_test_list:
         elif args.reward_name ==  'stability_rosetta':
             from fmif.reward_energy import newreward_model
             new_reward_model = newreward_model(batch, the_folding_model, pdb_path, mask_for_loss, save_path)
+        else:
+            raise NotImplementedError()
 
-        # Start Sampling# 
-
-
+        # Start Sampling#
         if args.decoding == 'dps':
             S_sp, _, _ = noise_interpolant.sample_controlled_DPS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
                 guidance_scale=args.dps_scale, reward_model=reward_model)  
@@ -357,7 +367,8 @@ for testing_model in model_to_test_list:
         elif args.decoding == 'original':
             S_sp, _, _ = noise_interpolant.sample(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all)
         #S_sp: 30 times 47, 30 * 47 * 4* 3
-
+        else:
+            raise NotImplementedError()
 
         # Evaluation 
         if args.reward_name == 'stability': 
@@ -389,8 +400,19 @@ for testing_model in model_to_test_list:
         recovery_r = torch.sum(hoge,1)/torch.sum(mask_for_loss,1)
 
         # Calculate likelihood
-        model_logl = get_likelihood(old_fmif_model, (X, S_sp, mask, chain_M, residue_idx, chain_encoding_all), args.num_timesteps, device, noise_interpolant, eps=1e-5)
-        all_model_logl.append(model_logl.detach().cpu().numpy())
+        model_logl_sum, model_logl_mean = get_likelihood(
+            testing_model,
+            (X, S_sp, mask, chain_M, residue_idx, chain_encoding_all),
+            args.num_timesteps,
+            device,
+            noise_interpolant,
+            eps=1e-5,
+            mean_value=True
+        )
+        model_logl_sum = model_logl_sum.detach().cpu().numpy().mean()
+        model_logl_mean = model_logl_mean.detach().cpu().numpy().mean()
+        all_model_logl_sum.append(model_logl_sum)
+        all_model_logl_mean.append(model_logl_mean)
 
         # Calculate RMSD 
         gen_foldtrue_mpnn_results_list, gen_true_mpnn_results_list, foldtrue_true_mpnn_results_list = cal_rmsd(S_sp, S, batch, the_folding_model, pdb_path, mask_for_loss, save_path, args.decoding,  eval=True)
@@ -398,25 +420,51 @@ for testing_model in model_to_test_list:
         gen_true_mpnn_results_merge.extend(gen_true_mpnn_results_list)
         foldtrue_true_mpnn_results_merge.extend(foldtrue_true_mpnn_results_list)
 
-        print("Reward", np.mean(final_reward) )
-        print("scRMSD", np.mean(np.array(pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])))
-        print("recovery", np.mean(recovery_r.detach().cpu().numpy()))
+        # calculate diversity
+        cur_diversity = set_diversity(S_sp.detach().cpu().numpy(), mask_for_loss.detach().cpu().numpy())
+        all_diversity.append(cur_diversity)
 
-        # Save Data
-        folder_path = f"log/{args.wandb_name}"
-        os.makedirs(folder_path, exist_ok=True)
-        print(f"save to {folder_path}")
+        # print("Reward", np.mean(final_reward) )
+        # print("scRMSD", np.mean(np.array(pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])))
+        # print("recovery", np.mean(recovery_r.detach().cpu().numpy()))
+        cur_reward = np.mean(final_reward).item()
+        cur_scRMSD = np.mean(np.array(pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])).item()
+        cur_recovery = np.mean(recovery_r.detach().cpu().numpy()).item()
+        all_reward.append(cur_reward)
+        all_scRMSD.append(cur_scRMSD)
+        all_recovery.append(cur_recovery)
+
+        # current protein results
+        cur_protein_prefix = f"{args.decoding}_{args.reward_name}_{batch['protein_name'][0][:-4]}"
+        cur_result_dict = {
+            f'{cur_protein_prefix}_Reward': cur_reward,
+            f'{cur_protein_prefix}_scRMSD': cur_scRMSD,
+            f'{cur_protein_prefix}_recovery': cur_recovery,
+            f'{cur_protein_prefix}_log_likelihood_sum': model_logl_sum,
+            f'{cur_protein_prefix}_log_likelihood_mean': model_logl_mean,
+            f'{cur_protein_prefix}_diversity': cur_diversity,
+        }
+        print(cur_result_dict)
+        assert not set(all_result_dict.keys()) & set(cur_result_dict.keys())
+        all_result_dict.update(cur_result_dict)
+
+        # save per protein result
         df = pd.concat(gen_true_mpnn_results_list)
         # df.to_csv("log/"+args.wandb_name+"_reward_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".csv", index=False)
         # np.savez("log/"+args.wandb_name+"_reward_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = final_reward) # Save "rewards" for generated samples
         # np.savez("log/"+args.wandb_name+"_recovery_"+ args.decoding  + "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = recovery_r.cpu().data.numpy()) # Save "recovery rates" for generated samples
         # np.savez("log/"+args.wandb_name+"_scRMSD_"+ args.decoding  + "_"+ args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz", reward = pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])  # Save "scRMSDs" for generated samples
-        df.to_csv(os.path.join(folder_path, "reward_" + args.decoding + "_" + str(repeat_num)+ "_" + args.reward_name + "_"  + batch['protein_name'][0][:-4] + ".csv"), index=False)
-        np.savez(os.path.join(folder_path, "reward_" + args.decoding + "_" +  str(repeat_num)+ "_" + args.reward_name + "_" +
-                 batch['protein_name'][0][:-4] + ".npz"), reward=final_reward)  # Save "rewards" for generated samples
-        np.savez(os.path.join(folder_path, "recovery_" + args.decoding + "_" +  str(repeat_num)+ "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz"), reward=recovery_r.cpu().data.numpy())
-        np.savez(os.path.join(folder_path, "scRMSD_" + args.decoding + "_" +  str(repeat_num)+ "_" + args.reward_name + "_" + batch['protein_name'][0][:-4] + ".npz"), reward=pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])
+        df.to_csv(os.path.join(folder_path, f"reward_{cur_protein_prefix}.csv"), index=False)
+        np.savez(os.path.join(folder_path, f"reward_{cur_protein_prefix}.npz"), reward=final_reward)
+        np.savez(os.path.join(folder_path, f"recovery_{cur_protein_prefix}.npz"), reward=recovery_r.cpu().data.numpy())
+        np.savez(os.path.join(folder_path, f"scRMSD_{cur_protein_prefix}.npz"), reward=pd.concat(gen_true_mpnn_results_list)['bb_rmsd'])
 
-        args_dict = vars(args)
-        with open(os.path.join(folder_path, "args.json"), "w") as f:
-            json.dump(args_dict, f, indent=4)
+    # save aggregated result
+    all_result_dict['final_Reward'] = sum(all_reward) / len(all_reward)
+    all_result_dict['final_scRMSD'] = sum(all_scRMSD) / len(all_scRMSD)
+    all_result_dict['final_recovery'] = sum(all_recovery) / len(all_recovery)
+    all_result_dict['final_log_likelihood_sum'] = sum(all_model_logl_sum) / len(all_model_logl_sum)
+    all_result_dict['final_log_likelihood_mean'] = sum(all_model_logl_mean) / len(all_model_logl_mean)
+    all_result_dict['final_diversity'] = sum(all_diversity) / len(all_diversity)
+    with open(os.path.join(folder_path, "result_dict.json"), "w") as f:
+        json.dump(all_result_dict, f)
