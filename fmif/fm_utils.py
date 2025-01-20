@@ -804,7 +804,8 @@ class Interpolant:
             self,
             model,
             X, mask, chain_M, residue_idx, chain_encoding_all,
-            reward_model, reward_name, repeats=3, depth=3, search_schudule='all', drop_schudule="", oversamplerate=2
+            reward_model, reward_name, repeats=3, depth=3, search_schudule='all', drop_schudule="", oversamplerate=2,
+            return_svdd_rate=False,
     ):
 
         eval_sp_size, num_res = mask.shape
@@ -863,7 +864,8 @@ class Interpolant:
             k = 10  # Adjust steepness
             num_samples_schedule = [
                 max(eval_sp_size, int(batch_size_per_gpu / (1 + np.exp(-k * (t / (len(ts)-1) - 0.5)))))
-                for t in range((len(ts)-1))].reverse()
+                for t in range((len(ts)-1))]
+            num_samples_schedule.reverse()
         else:
             num_samples_schedule = [eval_sp_size] * (len(ts)-1)
 
@@ -1217,7 +1219,10 @@ class Interpolant:
         oversample_rate = oversample / (eval_sp_size * int((len(ts)-1)))
         print(f'search rate: {search_rate}, oversample rate: {oversample_rate}')
         perc = [repeats**(i+1) for i in range(depth)]
-        print(f'rate over svdd: {int((search_rate*sum(perc)/(repeats*depth)+1-search_rate)*oversample_rate)}')
+        rate_svdd = int((search_rate*sum(perc)/(repeats*depth)+1-search_rate)*oversample_rate)
+        print(f'rate over svdd: {rate_svdd}')
+        if return_svdd_rate:
+            return clean_aatypes_t_1, prot_traj, clean_traj, rate_svdd
         return clean_aatypes_t_1, prot_traj, clean_traj
 
     def sample_controlled_NestedIS(

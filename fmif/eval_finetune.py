@@ -65,7 +65,7 @@ def cal_rmsd(S_sp, S, batch, the_folding_model, pdb_path, mask_for_loss, save_pa
             run_name = run_name[-1]
         
         if eval:
-            sc_output_dir = os.path.join('sc_tmp', run_name, namename, 'sc_output', batch["protein_name"][0][:-4])
+            sc_output_dir = os.path.join('sc_tmp', f"{run_name}_{namename}_sc_output", batch["protein_name"][0][:-4])
             the_pdb_path = os.path.join(pdb_path, batch['WT_name'][0])
             # fold the ground truth sequence
             os.makedirs(os.path.join(sc_output_dir, 'true_seqs'), exist_ok=True)
@@ -82,7 +82,7 @@ def cal_rmsd(S_sp, S, batch, the_folding_model, pdb_path, mask_for_loss, save_pa
         for _it, ssp in enumerate(S_sp):
             if not eval:
                 sc_output_dir = os.path.join('sc_tmp', run_name, 'sc_output', batch["protein_name"][_it][:-4])
-            sc_output_dir = os.path.join('sc_tmp', run_name, namename, 'sc_output', batch["protein_name"][0][:-4],  str(_it)) 
+            sc_output_dir = os.path.join('sc_tmp', f"{run_name}_{namename}_sc_output", batch["protein_name"][0][:-4],  str(_it))
             os.makedirs(sc_output_dir, exist_ok=True)
             os.makedirs(os.path.join(sc_output_dir, 'fmif_seqs'), exist_ok=True)
             codesign_fasta = fasta.FastaFile()
@@ -297,7 +297,7 @@ folding_cfg = {
 }
 folding_cfg = SimpleNamespace(**folding_cfg)
 the_folding_model = folding_model.FoldingModel(folding_cfg)
-save_path = os.path.join(args.path_for_outputs, 'eval')
+save_path = os.path.join(args.path_for_outputs, f'eval_{args.wandb_name}')
 
 # result save path
 folder_path = f"log/{args.wandb_name}"
@@ -361,8 +361,10 @@ for testing_model in model_to_test_list:
              S_sp, _, _ = noise_interpolant.sample_controlled_SVDD(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
                 reward_model=new_reward_model, reward_name = args.reward_name, repeats = repeat_num )
         elif args.decoding == 'DDBFS':
-             S_sp, _, _ = noise_interpolant.sample_controlled_SVDD_BFS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
-                reward_model=new_reward_model, reward_name=args.reward_name, repeats=repeat_num, depth=args.depth, search_schudule=args.search_schedule, drop_schudule=args.drop_schedule, oversamplerate=args.drop_oversample_rate)
+             S_sp, _, _, rate_svdd = noise_interpolant.sample_controlled_SVDD_BFS(
+                 testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
+                 reward_model=new_reward_model, reward_name=args.reward_name, repeats=repeat_num, depth=args.depth, search_schudule=args.search_schedule, drop_schudule=args.drop_schedule, oversamplerate=args.drop_oversample_rate,
+                 return_svdd_rate=True)
         elif args.decoding == 'NestedIS': 
             S_sp, _, _ = noise_interpolant.sample_controlled_NestedIS(testing_model, X, mask, chain_M, residue_idx, chain_encoding_all,
                 reward_model= new_reward_model, reward_name = args.reward_name )     
@@ -445,6 +447,7 @@ for testing_model in model_to_test_list:
             f'{cur_protein_prefix}_log_likelihood_sum': model_logl_sum,
             f'{cur_protein_prefix}_log_likelihood_mean': model_logl_mean,
             f'{cur_protein_prefix}_diversity': cur_diversity,
+            f'{cur_protein_prefix}_svdd_rate': rate_svdd if args.decoding == 'DDBFS' else 0,
         }
         print(cur_result_dict)
         assert not set(all_result_dict.keys()) & set(cur_result_dict.keys())
